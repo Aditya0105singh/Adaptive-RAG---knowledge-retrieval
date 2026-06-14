@@ -20,38 +20,48 @@ except Exception:
 
 
 def _make_logo_pil(size: int = 80):
-    """Groq-style geometric 'A' mark — dark background, bold white strokes, zero decoration."""
+    """Three radiating signal arcs + source dot — Grok AI style, deep dark bg."""
     try:
         from PIL import Image, ImageDraw
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        # Near-black background with a faint blue undertone (Groq-style dark)
-        r = size // 5
-        fill = (8, 10, 32)
+        # Very dark navy — matches Grok AI's near-black aesthetic
+        r_bg = size // 5
+        bg = (6, 9, 32)
         try:
-            draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r, fill=fill)
+            draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r_bg, fill=bg)
         except (AttributeError, TypeError):
-            draw.rectangle([r, 0, size - r, size], fill=fill)
-            draw.rectangle([0, r, size, size - r], fill=fill)
-            for cx, cy in [(r, r), (size - r, r), (r, size - r), (size - r, size - r)]:
-                draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
+            draw.rectangle([0, 0, size, size], fill=bg)
+            for cx2, cy2 in [(r_bg, r_bg), (size-r_bg, r_bg), (r_bg, size-r_bg), (size-r_bg, size-r_bg)]:
+                draw.ellipse([cx2-r_bg, cy2-r_bg, cx2+r_bg, cy2+r_bg], fill=bg)
 
         s = size / 24.0
-        W = (255, 255, 255, 255)
-        lw = max(2, int(2.6 * s))
+        cx, cy = 7.0 * s, 12.0 * s   # source dot centre
 
-        # Geometric "A" — three clean strokes
-        # Left leg: apex → bottom-left
-        draw.line([(12 * s, 2.5 * s), (3.5 * s, 21.5 * s)], fill=W, width=lw)
-        # Right leg: apex → bottom-right
-        draw.line([(12 * s, 2.5 * s), (20.5 * s, 21.5 * s)], fill=W, width=lw)
-        # Crossbar at ~55% height
-        draw.line([(7.2 * s, 13.8 * s), (16.8 * s, 13.8 * s)], fill=W, width=lw)
+        # Outer glow halo behind dot
+        gh = 3.2 * s
+        draw.ellipse([(cx-gh, cy-gh), (cx+gh, cy+gh)], fill=(80, 120, 255, 55))
+
+        # Source dot — full bright white
+        dr = 1.6 * s
+        draw.ellipse([(cx-dr, cy-dr), (cx+dr, cy+dr)], fill=(255, 255, 255, 255))
+
+        # Three arcs: small / medium / large, decreasing brightness
+        arc_cfg = [
+            (3.5, (255, 255, 255, 255), max(2, int(2.0 * s))),
+            (6.0, (200, 210, 255, 165), max(2, int(1.7 * s))),
+            (9.0, (150, 165, 230,  90), max(1, int(1.4 * s))),
+        ]
+        for r_arc, color, lw in arc_cfg:
+            rp = r_arc * s
+            # PIL arc: 270°→90° clockwise = right-facing D-shape
+            draw.arc([(cx-rp, cy-rp), (cx+rp, cy+rp)],
+                     start=270, end=90, fill=color, width=lw)
 
         return img
     except Exception:
-        return "A"
+        return "◉"
 
 
 _LOGO_PIL = _make_logo_pil(80)
@@ -85,28 +95,36 @@ API_BASE = _resolve_api_base()
 
 # ── LOGO ──────────────────────────────────────────────────────────────────────
 def _logo_html(size: int = 36, radius: int = 10) -> str:
-    """Groq-style geometric 'A' mark — dark background, bold white strokes."""
-    ic = int(size * 0.75)
+    """Three radiating signal arcs + source dot — Grok AI aesthetic."""
+    ic = int(size * 0.82)
     return (
         f"<div style='width:{size}px;height:{size}px;"
-        "background:#08091f;"
+        "background:linear-gradient(150deg,#06091e 0%,#0b1038 100%);"
         f"border-radius:{radius}px;"
         "display:flex;align-items:center;justify-content:center;"
-        "box-shadow:0 2px 16px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.07);"
+        "box-shadow:0 4px 24px rgba(37,99,235,0.30),0 0 0 1px rgba(255,255,255,0.07);"
         "flex-shrink:0'>"
 
         f"<svg width='{ic}' height='{ic}' viewBox='0 0 24 24' fill='none'"
         " xmlns='http://www.w3.org/2000/svg'>"
 
-        # Left leg of A
-        "<line x1='12' y1='2.5' x2='3.5' y2='21.5'"
-        " stroke='white' stroke-width='2.6' stroke-linecap='round'/>"
-        # Right leg of A
-        "<line x1='12' y1='2.5' x2='20.5' y2='21.5'"
-        " stroke='white' stroke-width='2.6' stroke-linecap='round'/>"
-        # Crossbar
-        "<line x1='7.2' y1='13.8' x2='16.8' y2='13.8'"
-        " stroke='white' stroke-width='2.6' stroke-linecap='round'/>"
+        # Soft glow halo behind source dot
+        "<circle cx='7' cy='12' r='3.2' fill='rgba(80,130,255,0.18)'/>"
+
+        # Source dot — bright white
+        "<circle cx='7' cy='12' r='1.6' fill='white'/>"
+
+        # Inner arc (r=3.5) — full white
+        "<path d='M7,8.5 A3.5,3.5 0 0,1 7,15.5'"
+        " stroke='white' stroke-width='2.0' stroke-linecap='round'/>"
+
+        # Middle arc (r=6) — 60% opacity
+        "<path d='M7,6 A6,6 0 0,1 7,18'"
+        " stroke='white' stroke-width='1.8' stroke-linecap='round' opacity='0.55'/>"
+
+        # Outer arc (r=9) — 28% opacity
+        "<path d='M7,3 A9,9 0 0,1 7,21'"
+        " stroke='white' stroke-width='1.5' stroke-linecap='round' opacity='0.28'/>"
 
         "</svg></div>"
     )
