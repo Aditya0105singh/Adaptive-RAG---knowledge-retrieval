@@ -18,6 +18,8 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database clients on startup; close them on shutdown."""
+    import asyncio as _asyncio
+
     try:
         get_qdrant_client()
         logger.info("qdrant_ready")
@@ -34,6 +36,17 @@ async def lifespan(app: FastAPI):
             logger.info("mongo_ready")
     except Exception as exc:
         logger.warning("mongo_init_warning", error=str(exc))
+
+    # Pre-warm the sentence-transformers model so the first upload request
+    # doesn't stall long enough to hit Render's proxy timeout (30 s).
+    try:
+        from src.api.routers.upload import _ingestion_service
+        await _asyncio.get_event_loop().run_in_executor(
+            None, _ingestion_service._get_embeddings
+        )
+        logger.info("embeddings_model_warmed")
+    except Exception as exc:
+        logger.warning("embeddings_warmup_skipped", error=str(exc))
 
     logger.info("startup_complete")
     yield

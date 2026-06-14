@@ -1307,9 +1307,13 @@ with st.sidebar:
                     except requests.RequestException:
                         pass
                 else:
-                    st.error(f"Upload failed ({uf.name}): {r.json().get('detail', r.text)}")
-            except requests.RequestException as e:
-                st.error(f"Upload error: {e}")
+                    try:
+                        err_detail = r.json().get("detail", r.text)
+                    except Exception:
+                        err_detail = r.text[:300] if r.text else f"HTTP {r.status_code} — server returned no body"
+                    st.error(f"Upload failed ({uf.name}): {err_detail}")
+            except Exception as e:
+                st.error(f"Upload error: {_friendly_error(str(e))}")
             finally:
                 _upload_ph.empty()
     else:
