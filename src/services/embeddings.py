@@ -1,51 +1,62 @@
 """Embedding singleton using the HuggingFace Inference API.
 
 No local model is loaded — embeddings are computed on HF servers via HTTP.
-This keeps Render free-tier RAM well under 512 MB (saves ~150 MB vs fastembed).
-
+Uses requests (synchronous, already a dep) with retry on transient errors.
 Set HF_TOKEN env var for higher rate limits; works unauthenticated for demos.
 """
 import os
+import time
 from typing import List, Optional
 
-import httpx
+import requests as _requests
 
 _instance: Optional["_HFEmbeddings"] = None
 
 _HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-_HF_URL = (
-    f"https://api-inference.huggingface.co/pipeline/feature-extraction/{_HF_MODEL}"
-)
+_HF_URL = f"https://api-inference.huggingface.co/models/{_HF_MODEL}"
 
 
 class _HFEmbeddings:
-    """Thin wrapper around the HF Inference API feature-extraction endpoint."""
-
     def __init__(self) -> None:
         token = os.environ.get("HF_TOKEN", "")
         self._headers = {"Authorization": f"Bearer {token}"} if token else {}
-        self._client = httpx.Client(timeout=60.0)
+        self._session = _requests.Session()
+        self._session.headers.update(self._headers)
 
-    def _post(self, payload: dict) -> list:
-        resp = self._client.post(_HF_URL, headers=self._headers, json=payload)
-        resp.raise_for_status()
-        return resp.json()
+    def _post(self, payload: dict, retries: int = 3) -> list:
+        for attempt in range(retries):
+            try:
+                resp = self._session.post(_HF_URL, json=payload, timeout=60)
+                # 503 means model is loading — wait and retry
+                if resp.status_code == 503:
+                    time.sleep(10)
+                    continue
+                resp.raise_for_status()
+                return resp.json()
+            except (_requests.ConnectionError, _requests.Timeout) as exc:
+                if attempt == retries - 1:
+                    raise
+                time.sleep(3 * (attempt + 1))
+        raise RuntimeError("HF Inference API unavailable after retries")
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        result = self._post({"inputs": texts, "options": {"wait_for_model": True}})
-        # HF returns List[List[float]] for batch inputs
+        result = self._post({
+            "inputs": texts,
+            "options": {"wait_for_model": True},
+        })
         return result
 
     def embed_query(self, text: str) -> List[float]:
-        result = self._post({"inputs": text, "options": {"wait_for_model": True}})
-        # HF returns List[float] for single string input
+        result = self._post({
+            "inputs": text,
+            "options": {"wait_for_model": True},
+        })
         if result and isinstance(result[0], list):
             return result[0]
         return result
 
 
 def get_embeddings() -> _HFEmbeddings:
-    """Return the process-wide embeddings client (lazy, created on first call)."""
     global _instance
     if _instance is None:
         _instance = _HFEmbeddings()
