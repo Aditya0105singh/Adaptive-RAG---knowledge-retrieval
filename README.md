@@ -20,6 +20,17 @@
 
 ---
 
+## 📸 Application Visuals
+
+> **Add your working visuals here!** 
+> Replace the placeholder image below with a GIF or screenshot of your working application. You can easily do this by dragging and dropping an image into the GitHub editor.
+
+<p align="center">
+  <img src="https://via.placeholder.com/800x400.png?text=Adaptive+RAG+Demo+Video+or+GIF" alt="Adaptive RAG Demo">
+</p>
+
+---
+
 ## What It Does
 
 Upload any document (PDF, DOCX, TXT, MD, CSV) and ask questions in natural language. The system automatically decides the best retrieval strategy for each query:
@@ -34,48 +45,51 @@ All responses stream token-by-token with full source attribution and a visible p
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Streamlit Frontend                        │
-│         (Streamlit Cloud — *.streamlit.app)                 │
-└──────────────────────┬──────────────────────────────────────┘
-                       │  SSE streaming + REST
-┌──────────────────────▼──────────────────────────────────────┐
-│               FastAPI Backend  (Render Docker)               │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │                LangGraph StateGraph                   │   │
-│  │                                                      │   │
-│  │  route_question → retrieve / web_search → grade     │   │
-│  │       → transform_query → generate_answer           │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │Cohere Embed │  │ Qdrant Cloud │  │ Groq Llama 3.3   │   │
-│  │  384-dim    │  │  Vector DB   │  │    70B LLM        │   │
-│  └─────────────┘  └──────────────┘  └──────────────────┘   │
-│                                                              │
-│  ┌─────────────┐  ┌──────────────┐                         │
-│  │Tavily Search│  │MongoDB Atlas │                         │
-│  │ web fallback│  │chat history  │                         │
-│  └─────────────┘  └──────────────┘                         │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    UI["💻 Streamlit Frontend <br/> (Streamlit Cloud)"] -- "SSE streaming + REST" --> API["⚡ FastAPI Backend <br/> (Render Docker)"]
+    
+    subgraph Backend["Backend Infrastructure"]
+        API
+        
+        subgraph Graph["🧠 LangGraph StateGraph"]
+            route["Route Question"] --> ret["Retrieve / Web Search"]
+            ret --> grade["Grade"]
+            grade --> trans["Transform Query"]
+            trans --> gen["Generate Answer"]
+        end
+        
+        subgraph Services["External Services"]
+            Cohere["Cohere Embed 384-dim"]
+            Qdrant[/"Qdrant Cloud Vector DB"/]
+            Groq["Groq Llama 3.3 70B LLM"]
+            Tavily["Tavily Search Web Fallback"]
+            Mongo[/"MongoDB Atlas Chat History"/]
+        end
+        
+        API --> Graph
+        Graph -.-> Services
+    end
 ```
 
 ### Adaptive Routing Logic
 
-```
-User Query
-    │
-    ▼
-Route Question (LLM classifier)
-    ├── Document uploaded?
-    │       ├── YES → Retrieve from Qdrant → Grade relevance
-    │       │               ├── Relevant  → Generate Answer ✓
-    │       │               └── Not relevant → Transform query → Web Search
-    │       └── NO  → General Knowledge (Groq direct) or Web Search
-    │
-    └── Score below threshold → Knowledge Gap Alert shown to user
+```mermaid
+flowchart TD
+    Q["User Query"] --> R{"Route Question <br> (LLM Classifier)"}
+    
+    R -->|"Document Uploaded"| Doc{"Doc Path"}
+    Doc -->|"Yes"| Ret["Retrieve from Qdrant"]
+    Ret --> Grade{"Grade Relevance"}
+    Grade -->|"Relevant"| Gen["Generate Answer ✓"]
+    Grade -->|"Not Relevant"| Trans["Transform Query"]
+    Trans --> Web["Web Search"]
+    Web --> Gen
+    
+    Doc -->|"No"| NoDoc["General Knowledge / Web Search"]
+    NoDoc --> Gen
+    
+    R -->|"Score below threshold"| Alert["Knowledge Gap Alert shown to user"]
 ```
 
 ---
