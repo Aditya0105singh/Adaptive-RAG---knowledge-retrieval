@@ -4,7 +4,7 @@ import io
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
-from typing import List, Optional
+from typing import List
 
 from pypdf import PdfReader
 from qdrant_client.models import Distance, PointStruct, VectorParams
