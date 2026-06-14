@@ -54,9 +54,25 @@ def _get_llm() -> ChatGroq:
             model=settings.GROQ_MODEL,
             temperature=0,
             api_key=settings.GROQ_API_KEY,
-            max_tokens=32768,
+            max_tokens=1024,  # 32768 burned the full TPM budget; 1024 is ample for RAG answers
         )
     return _llm
+
+
+def _invoke_with_retry(messages, max_retries: int = 2, wait: int = 65):
+    """Invoke the LLM; auto-retry up to max_retries times on Groq 429 rate-limit errors."""
+    llm = _get_llm()
+    for attempt in range(max_retries + 1):
+        try:
+            return llm.invoke(messages)
+        except Exception as exc:
+            msg = str(exc).lower()
+            is_rate_limit = "rate" in msg or "429" in msg or "rate_limit" in msg
+            if is_rate_limit and attempt < max_retries:
+                logger.warning("groq_rate_limit_retry", attempt=attempt + 1, wait_seconds=wait)
+                time.sleep(wait)
+            else:
+                raise
 
 
 def _extract_usage(response) -> dict:
@@ -140,7 +156,7 @@ def route_question(state: GraphState) -> dict:
             ),
             HumanMessage(content=question),
         ]
-        response = _get_llm().invoke(messages)
+        response = _invoke_with_retry(messages)
         route = response.content.strip().lower()
         if route not in ("index", "general", "search"):
             route = "index"
@@ -214,7 +230,7 @@ def grade_documents(state: GraphState) -> dict:
                 ),
                 HumanMessage(content=f"Question: {question}\n\nDocuments:\n{numbered}"),
             ]
-            response = _get_llm().invoke(messages)
+            response = _invoke_with_retry(messages)
             token_usage = _merge_usage(token_usage, _extract_usage(response))
             try:
                 raw = response.content.strip()
@@ -367,10 +383,9 @@ def generate_answer(state: GraphState) -> dict:
             citation_note = ""
         history = state.get("conversation_history") or []
 
-        # Build history turn messages — cap at last 6 messages (3 exchanges) to
-        # stay within token budget. Older context is less relevant anyway.
+        # Cap at last 6 messages (3 exchanges) to stay within the 6k TPM budget.
         history_msgs = []
-        for turn in history[-20:]:
+        for turn in history[-6:]:
             role = turn.get("role", "")
             content = turn.get("content", "")
             if role == "user":
@@ -392,11 +407,23 @@ def generate_answer(state: GraphState) -> dict:
         gen_messages = [system_msg] + history_msgs + [current_msg]
         parts: List[str] = []
         last_chunk = None
-        for chunk in _get_llm().stream(gen_messages):
-            t = chunk.content or ""
-            parts.append(t)
-            _emit_token(t)
-            last_chunk = chunk
+        for attempt in range(3):
+            try:
+                parts = []
+                last_chunk = None
+                for chunk in _get_llm().stream(gen_messages):
+                    t = chunk.content or ""
+                    parts.append(t)
+                    _emit_token(t)
+                    last_chunk = chunk
+                break  # stream completed successfully
+            except Exception as exc:
+                msg = str(exc).lower()
+                if ("rate" in msg or "429" in msg) and attempt < 2:
+                    logger.warning("groq_rate_limit_stream_retry", attempt=attempt + 1)
+                    time.sleep(65)
+                else:
+                    raise
         answer = "".join(parts).strip()
         token_usage = _merge_usage(token_usage, _extract_usage(last_chunk) if last_chunk else {})
 
