@@ -20,15 +20,15 @@ except Exception:
 
 
 def _make_logo_pil(size: int = 80):
-    """Magnifying glass + sparkle — clean document-intelligence mark."""
+    """Bold lightning bolt — speed + intelligence mark for Adaptive RAG."""
     try:
         from PIL import Image, ImageDraw
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        # Rounded square background: deep blue → vivid blue gradient approximated as solid
+        # Dark blue rounded background
         r = size // 5
-        fill = (18, 38, 100)
+        fill = (14, 24, 80)
         try:
             draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r, fill=fill)
         except (AttributeError, TypeError):
@@ -37,44 +37,33 @@ def _make_logo_pil(size: int = 80):
             for cx, cy in [(r, r), (size - r, r), (r, size - r), (size - r, size - r)]:
                 draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
 
-        s = size / 24  # SVG coord scale
+        # Lightning bolt polygon — SVG viewBox 0 0 24 24, scaled to PIL coords
+        # Points: top-right of bolt → down-left → across → down to tip → up-right → across → back
+        s = size / 24.0
+        bolt = [
+            (13.5 * s, 2.0 * s),   # top tip
+            (7.0  * s, 13.0 * s),  # mid-left
+            (11.5 * s, 13.0 * s),  # mid notch
+            (10.5 * s, 22.0 * s),  # bottom tip
+            (17.0 * s, 11.0 * s),  # mid-right
+            (12.5 * s, 11.0 * s),  # mid notch right
+        ]
+        draw.polygon(bolt, fill=(255, 255, 255, 255))
 
-        def _circ(cx, cy, cr, fc=None, oc=None, lw=2):
-            x0, y0 = cx * s - cr * s, cy * s - cr * s
-            x1, y1 = cx * s + cr * s, cy * s + cr * s
-            if fc:
-                draw.ellipse([x0, y0, x1, y1], fill=fc)
-            if oc:
-                draw.ellipse([x0, y0, x1, y1], outline=oc, width=max(1, int(lw * s)))
-
-        def _ln(x1, y1, x2, y2, c, lw):
-            draw.line([(x1 * s, y1 * s), (x2 * s, y2 * s)], fill=c, width=max(1, int(lw * s)))
-
-        W = (255, 255, 255, 255)
-        Wm = (255, 255, 255, 200)
-        Wd = (255, 255, 255, 130)
-
-        # Lens circle (stroke only)
-        _circ(9.5, 9.5, 5.2, oc=W, lw=2.0)
-        # Handle (bottom-right diagonal)
-        _ln(13.2, 13.2, 19.5, 19.5, W, 2.2)
-        # Round cap on handle end
-        _circ(19.5, 19.5, 1.1, fc=W)
-
-        # Sparkle cross inside lens (represents AI / intelligence)
-        _ln(7.0, 9.5, 12.0, 9.5, Wm, 1.4)   # horizontal
-        _ln(9.5, 7.0, 9.5, 12.0, Wm, 1.4)   # vertical
-        # Diagonal arms (shorter)
-        _ln(7.8, 7.8, 8.6, 8.6, Wd, 1.1)
-        _ln(11.2, 7.8, 10.4, 8.6, Wd, 1.1)
-        _ln(7.8, 11.2, 8.6, 10.4, Wd, 1.1)
-        _ln(11.2, 11.2, 10.4, 10.4, Wd, 1.1)
-        # Centre dot
-        _circ(9.5, 9.5, 1.0, fc=W)
+        # Subtle inner glow — slightly smaller bolt in a pale blue tint
+        glow = [
+            (13.5 * s, 4.5 * s),
+            (9.0  * s, 13.0 * s),
+            (12.0 * s, 13.0 * s),
+            (11.0 * s, 19.5 * s),
+            (15.5 * s, 11.0 * s),
+            (13.0 * s, 11.0 * s),
+        ]
+        draw.polygon(glow, fill=(180, 210, 255, 60))
 
         return img
     except Exception:
-        return "🔍"
+        return "⚡"
 
 
 _LOGO_PIL = _make_logo_pil(80)
@@ -108,41 +97,25 @@ API_BASE = _resolve_api_base()
 
 # ── LOGO ──────────────────────────────────────────────────────────────────────
 def _logo_html(size: int = 36, radius: int = 10) -> str:
-    """Magnifying glass + sparkle — document intelligence mark."""
-    ic = int(size * 0.72)
+    """Bold lightning bolt — speed + intelligence mark for Adaptive RAG."""
+    ic = int(size * 0.68)
     return (
         f"<div style='width:{size}px;height:{size}px;"
-        "background:linear-gradient(145deg,#121a5e 0%,#1e3fa8 60%,#2563EB 100%);"
+        "background:linear-gradient(145deg,#0e1850 0%,#1a2fa0 55%,#2563EB 100%);"
         f"border-radius:{radius}px;"
         "display:flex;align-items:center;justify-content:center;"
-        "box-shadow:0 4px 18px rgba(37,99,235,0.50),0 1px 4px rgba(0,0,0,0.30);"
+        "box-shadow:0 4px 20px rgba(37,99,235,0.55),0 1px 5px rgba(0,0,0,0.30);"
         "flex-shrink:0'>"
 
-        f"<svg width='{ic}' height='{ic}' viewBox='0 0 24 24' fill='none'"
+        f"<svg width='{ic}' height='{ic}' viewBox='0 0 24 24'"
         " xmlns='http://www.w3.org/2000/svg'>"
 
-        # Lens circle
-        "<circle cx='9.5' cy='9.5' r='5.2' stroke='white' stroke-width='2'/>"
-        # Handle
-        "<line x1='13.2' y1='13.2' x2='19.5' y2='19.5'"
-        " stroke='white' stroke-width='2.2' stroke-linecap='round'/>"
-
-        # Sparkle cross inside lens
-        "<line x1='7' y1='9.5' x2='12' y2='9.5'"
-        " stroke='white' stroke-width='1.4' stroke-linecap='round' opacity='0.9'/>"
-        "<line x1='9.5' y1='7' x2='9.5' y2='12'"
-        " stroke='white' stroke-width='1.4' stroke-linecap='round' opacity='0.9'/>"
-        # Diagonal arms
-        "<line x1='7.9' y1='7.9' x2='8.7' y2='8.7'"
-        " stroke='white' stroke-width='1.1' stroke-linecap='round' opacity='0.55'/>"
-        "<line x1='11.1' y1='7.9' x2='10.3' y2='8.7'"
-        " stroke='white' stroke-width='1.1' stroke-linecap='round' opacity='0.55'/>"
-        "<line x1='7.9' y1='11.1' x2='8.7' y2='10.3'"
-        " stroke='white' stroke-width='1.1' stroke-linecap='round' opacity='0.55'/>"
-        "<line x1='11.1' y1='11.1' x2='10.3' y2='10.3'"
-        " stroke='white' stroke-width='1.1' stroke-linecap='round' opacity='0.55'/>"
-        # Centre dot
-        "<circle cx='9.5' cy='9.5' r='1.1' fill='white'/>"
+        # Bold white lightning bolt
+        "<polygon points='13.5,2 7,13 11.5,13 10.5,22 17,11 12.5,11'"
+        " fill='white'/>"
+        # Inner glow layer
+        "<polygon points='13.5,4.5 9,13 12,13 11,19.5 15.5,11 13,11'"
+        " fill='rgba(180,210,255,0.22)'/>"
 
         "</svg></div>"
     )
