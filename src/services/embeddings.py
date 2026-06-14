@@ -1,46 +1,52 @@
-"""Process-wide singleton for the embedding model.
+"""Embedding singleton using the HuggingFace Inference API.
 
-Uses fastembed (ONNX runtime, no PyTorch) so the model fits in 512 MB RAM.
-BAAI/bge-small-en-v1.5 outputs 384-dim vectors — same as all-MiniLM-L6-v2.
+No local model is loaded — embeddings are computed on HF servers via HTTP.
+This keeps Render free-tier RAM well under 512 MB (saves ~150 MB vs fastembed).
+
+Set HF_TOKEN env var for higher rate limits; works unauthenticated for demos.
 """
+import os
 from typing import List, Optional
 
-_instance = None
-_FASTEMBED_MODEL = "BAAI/bge-small-en-v1.5"
+import httpx
+
+_instance: Optional["_HFEmbeddings"] = None
+
+_HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+_HF_URL = (
+    f"https://api-inference.huggingface.co/pipeline/feature-extraction/{_HF_MODEL}"
+)
 
 
-def _load():
-    from fastembed import TextEmbedding
-    return TextEmbedding(model_name=_FASTEMBED_MODEL)
+class _HFEmbeddings:
+    """Thin wrapper around the HF Inference API feature-extraction endpoint."""
 
+    def __init__(self) -> None:
+        token = os.environ.get("HF_TOKEN", "")
+        self._headers = {"Authorization": f"Bearer {token}"} if token else {}
+        self._client = httpx.Client(timeout=60.0)
 
-def _get_model():
-    global _instance
-    if _instance is None:
-        _instance = _load()
-    return _instance
-
-
-class _EmbeddingsAdapter:
-    """Thin adapter so ingestion.py and retrieval.py can call .embed_documents()
-    and .embed_query() exactly as they did with HuggingFaceEmbeddings."""
+    def _post(self, payload: dict) -> list:
+        resp = self._client.post(_HF_URL, headers=self._headers, json=payload)
+        resp.raise_for_status()
+        return resp.json()
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        model = _get_model()
-        return [v.tolist() for v in model.embed(texts)]
+        result = self._post({"inputs": texts, "options": {"wait_for_model": True}})
+        # HF returns List[List[float]] for batch inputs
+        return result
 
     def embed_query(self, text: str) -> List[float]:
-        model = _get_model()
-        return next(model.embed([text])).tolist()
+        result = self._post({"inputs": text, "options": {"wait_for_model": True}})
+        # HF returns List[float] for single string input
+        if result and isinstance(result[0], list):
+            return result[0]
+        return result
 
 
-_adapter: Optional[_EmbeddingsAdapter] = None
-
-
-def get_embeddings() -> _EmbeddingsAdapter:
-    """Return the process-wide embeddings adapter, loading the model on first call."""
-    global _adapter
-    if _adapter is None:
-        _get_model()          # pre-load the fastembed model
-        _adapter = _EmbeddingsAdapter()
-    return _adapter
+def get_embeddings() -> _HFEmbeddings:
+    """Return the process-wide embeddings client (lazy, created on first call)."""
+    global _instance
+    if _instance is None:
+        _instance = _HFEmbeddings()
+    return _instance
