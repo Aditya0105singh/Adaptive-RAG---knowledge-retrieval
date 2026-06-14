@@ -6,16 +6,12 @@ import sys
 os.environ.setdefault("USE_TF", "0")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
-# torch must be imported before langchain-core / transformers to avoid an
-# OSError on Windows when the DLLs are loaded inside an already-large process.
-# We import it eagerly here so it is in sys.modules before any other import
-# triggers the langchain_core → transformers → torch chain.
+# torch is optional — we switched to fastembed (ONNX) for embeddings so PyTorch
+# is no longer installed. Insert a lightweight mock so any langchain-core path
+# that probes `torch` doesn't crash (it falls back to tiktoken instead).
 try:
     import torch  # noqa: F401
-except OSError as _torch_err:
-    # GPU-build DLL init failure — insert a lightweight mock so transformers
-    # skips its torch-dependent code paths (langchain-core sets
-    # _HAS_TRANSFORMERS = False and falls back to tiktoken).
+except (ImportError, OSError):
     from unittest.mock import MagicMock as _MagicMock
     _mock = _MagicMock()
     _mock.__version__ = "0.0.0+mock"
