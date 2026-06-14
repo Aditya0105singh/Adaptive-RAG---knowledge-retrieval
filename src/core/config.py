@@ -1,5 +1,27 @@
 """Application configuration via Pydantic BaseSettings loaded from .env."""
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _inject_streamlit_secrets() -> None:
+    """
+    On Streamlit Cloud, secrets live in st.secrets but the FastAPI backend
+    (running in the same process) reads them via os.environ / .env.
+    This bridges the gap by copying every st.secrets key into os.environ
+    so that Pydantic BaseSettings can see them.
+    Must be called before `settings` is instantiated.
+    """
+    try:
+        import streamlit as st
+        for key, value in st.secrets.items():
+            if key not in os.environ:
+                os.environ[key] = str(value)
+    except Exception:
+        pass  # Not running inside Streamlit, or secrets not configured yet
+
+
+_inject_streamlit_secrets()
 
 
 class Settings(BaseSettings):

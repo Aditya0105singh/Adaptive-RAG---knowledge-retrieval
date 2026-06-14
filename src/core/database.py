@@ -1,8 +1,6 @@
 """Singleton clients for Qdrant (vectors) and MongoDB (chat history)."""
 from typing import Optional
 
-from pymongo import MongoClient
-from pymongo.collection import Collection
 from qdrant_client import QdrantClient
 
 from src.core.config import settings
@@ -11,7 +9,8 @@ from src.core.logging import get_logger
 logger = get_logger(__name__)
 
 _qdrant_client: Optional[QdrantClient] = None
-_mongo_client: Optional[MongoClient] = None
+_mongo_client = None          # Optional[MongoClient] — None when MongoDB is unavailable
+_mongo_available: bool = True  # flipped to False on first failed attempt
 
 
 def get_qdrant_client() -> QdrantClient:
@@ -26,7 +25,7 @@ def get_qdrant_client() -> QdrantClient:
             client = QdrantClient(
                 url=settings.QDRANT_URL,
                 api_key=settings.QDRANT_API_KEY or None,
-                timeout=3,
+                timeout=10,
             )
             # Verify connectivity — raises if Qdrant is not actually running.
             client.get_collections()
@@ -36,34 +35,55 @@ def get_qdrant_client() -> QdrantClient:
             logger.warning(
                 "qdrant_remote_unavailable",
                 url=settings.QDRANT_URL,
-                fallback="local-disk",
+                fallback="in-memory",
             )
-            # Persist to disk so indexed documents survive backend restarts.
-            _qdrant_client = QdrantClient(path="./qdrant_storage")
-            logger.info("qdrant_client_initialized", url="./qdrant_storage")
+            # In-memory fallback — no persistence but app stays alive.
+            _qdrant_client = QdrantClient(":memory:")
+            logger.info("qdrant_client_initialized", url=":memory:")
     return _qdrant_client
 
 
-def get_mongo_client() -> MongoClient:
-    """Return the process-wide MongoClient singleton, creating it on first use."""
-    global _mongo_client
+def get_mongo_client():
+    """Return the process-wide MongoClient singleton, or None if MongoDB is unavailable.
+
+    Never raises — callers must handle a None return value gracefully.
+    """
+    global _mongo_client, _mongo_available
+
+    if not _mongo_available:
+        return None  # already failed once; don't retry on every request
+
     if _mongo_client is None:
+        mongo_uri = settings.MONGO_URI or ""
+        if not mongo_uri or mongo_uri in ("mongodb://localhost:27017", ""):
+            # No usable URI configured — skip silently.
+            logger.warning("mongo_skipped", reason="no remote URI configured")
+            _mongo_available = False
+            return None
         try:
-            _mongo_client = MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=5000)
+            from pymongo import MongoClient
+            _mongo_client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+            # Ping to confirm the connection is actually alive.
+            _mongo_client.admin.command("ping")
             logger.info("mongo_client_initialized")
         except Exception as exc:
-            logger.error("mongo_client_init_failed", error=str(exc))
-            raise
+            logger.warning("mongo_client_unavailable", error=str(exc))
+            _mongo_client = None
+            _mongo_available = False
+
     return _mongo_client
 
 
-def get_chat_collection() -> Collection:
-    """Return the 'chat_history' collection in the 'adaptive_rag' database."""
+def get_chat_collection():
+    """Return the 'chat_history' collection, or None if MongoDB is unavailable."""
     try:
-        return get_mongo_client()["adaptive_rag"]["chat_history"]
+        client = get_mongo_client()
+        if client is None:
+            return None
+        return client["adaptive_rag"]["chat_history"]
     except Exception as exc:
-        logger.error("mongo_collection_access_failed", error=str(exc))
-        raise
+        logger.warning("mongo_collection_access_failed", error=str(exc))
+        return None
 
 
 def close_connections() -> None:

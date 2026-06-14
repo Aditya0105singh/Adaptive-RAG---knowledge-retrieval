@@ -1,0 +1,40 @@
+# Secrets — never commit
+.env
+.streamlit/secrets.toml
+
+# Local Qdrant storage (use Qdrant Cloud in production)
+qdrant_storage/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Personal / dev-only files
+WALKTHROUGH.md
+INTERVIEW_PREP.md
+eval/
+go.py
