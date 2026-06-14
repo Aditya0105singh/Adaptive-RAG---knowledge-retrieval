@@ -6,13 +6,13 @@ import xml.etree.ElementTree as ET
 import zipfile
 from typing import List, Optional
 
-from langchain_huggingface import HuggingFaceEmbeddings
 from pypdf import PdfReader
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from src.core.config import settings
 from src.core.database import get_qdrant_client
 from src.core.logging import get_logger
+from src.services.embeddings import get_embeddings
 
 logger = get_logger(__name__)
 
@@ -35,15 +35,6 @@ def split_text(text: str, chunk_size: int, overlap: int) -> List[str]:
 
 class DocumentIngestionService:
     """Ingests PDF/TXT files into Qdrant using parent-child chunking."""
-
-    def __init__(self) -> None:
-        self._embeddings: Optional[HuggingFaceEmbeddings] = None
-
-    def _get_embeddings(self) -> HuggingFaceEmbeddings:
-        """Lazily create and cache the local embeddings model."""
-        if self._embeddings is None:
-            self._embeddings = HuggingFaceEmbeddings(model_name=settings.EMBED_MODEL)
-        return self._embeddings
 
     def _ensure_collection(self, collection_name: str) -> None:
         """Create the Qdrant collection if it does not already exist."""
@@ -116,7 +107,7 @@ class DocumentIngestionService:
 
         self._ensure_collection(cname)
         client = get_qdrant_client()
-        embeddings = self._get_embeddings()
+        embeddings = get_embeddings()
         try:
             for batch_start in range(0, len(children), EMBED_BATCH_SIZE):
                 batch = children[batch_start : batch_start + EMBED_BATCH_SIZE]
@@ -153,7 +144,7 @@ class DocumentIngestionService:
 
     async def retrieve(self, query: str, top_k: int = 5) -> List[str]:
         """Search child vectors and return deduplicated parent_text contexts."""
-        embeddings = self._get_embeddings()
+        embeddings = get_embeddings()
         try:
             query_vector = await asyncio.get_event_loop().run_in_executor(
                 None, embeddings.embed_query, query

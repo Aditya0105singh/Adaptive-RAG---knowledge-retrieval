@@ -37,13 +37,13 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("mongo_init_warning", error=str(exc))
 
-    # Pre-warm the sentence-transformers model so the first upload request
-    # doesn't stall long enough to hit Render's proxy timeout (30 s).
+    # Pre-warm the sentence-transformers model so the first upload/chat request
+    # doesn't stall long enough to hit Render's 30-second proxy timeout.
+    # Using the shared singleton ensures only one model copy lives in RAM.
     try:
-        from src.api.routers.upload import _ingestion_service
-        await _asyncio.get_event_loop().run_in_executor(
-            None, _ingestion_service._get_embeddings
-        )
+        from src.services.embeddings import get_embeddings
+        loop = _asyncio.get_running_loop()
+        await loop.run_in_executor(None, get_embeddings)
         logger.info("embeddings_model_warmed")
     except Exception as exc:
         logger.warning("embeddings_warmup_skipped", error=str(exc))

@@ -1,25 +1,16 @@
 """Synchronous semantic search over Qdrant child vectors returning parent contexts."""
-from typing import List, Optional
+from typing import List
 
-from langchain_huggingface import HuggingFaceEmbeddings
 from src.core.config import settings
 from src.core.database import get_qdrant_client
 from src.core.logging import get_logger
+from src.services.embeddings import get_embeddings
 
 logger = get_logger(__name__)
 
 
 class RetrievalService:
     """Embeds queries with local sentence-transformers and fetches parent chunks from Qdrant."""
-
-    def __init__(self) -> None:
-        self._embeddings: Optional[HuggingFaceEmbeddings] = None
-
-    def _get_embeddings(self) -> HuggingFaceEmbeddings:
-        """Lazily create and cache the local embeddings model."""
-        if self._embeddings is None:
-            self._embeddings = HuggingFaceEmbeddings(model_name=settings.EMBED_MODEL)
-        return self._embeddings
 
     def has_documents(self, collection_name: str = "") -> bool:
         """True if the collection exists and holds at least one indexed point."""
@@ -37,7 +28,7 @@ class RetrievalService:
         """Search child vectors by cosine similarity; return unique parent_text payloads."""
         cname = collection_name or settings.QDRANT_COLLECTION
         try:
-            query_vector = self._get_embeddings().embed_query(query)
+            query_vector = get_embeddings().embed_query(query)
             client = get_qdrant_client()
             results = client.query_points(
                 collection_name=cname,
@@ -68,7 +59,7 @@ class RetrievalService:
         """Like retrieve() but returns {text, filename} dicts for each parent chunk."""
         cname = collection_name or settings.QDRANT_COLLECTION
         try:
-            query_vector = self._get_embeddings().embed_query(query)
+            query_vector = get_embeddings().embed_query(query)
             client = get_qdrant_client()
             results = client.query_points(
                 collection_name=cname,
