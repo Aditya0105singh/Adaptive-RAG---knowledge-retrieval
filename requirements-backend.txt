@@ -29,6 +29,8 @@ tiktoken==0.13.0
 
 # Observability
 structlog==25.5.0
+opentelemetry-api==1.42.1
+opentelemetry-sdk==1.42.1
 
 # HTTP client
 requests==2.34.2
