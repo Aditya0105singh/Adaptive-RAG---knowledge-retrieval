@@ -20,15 +20,15 @@ except Exception:
 
 
 def _make_logo_pil(size: int = 80):
-    """Bold lightning bolt — speed + intelligence mark for Adaptive RAG."""
+    """Groq-style geometric 'A' mark — dark background, bold white strokes, zero decoration."""
     try:
         from PIL import Image, ImageDraw
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        # Dark blue rounded background
+        # Near-black background with a faint blue undertone (Groq-style dark)
         r = size // 5
-        fill = (14, 24, 80)
+        fill = (8, 10, 32)
         try:
             draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r, fill=fill)
         except (AttributeError, TypeError):
@@ -37,33 +37,21 @@ def _make_logo_pil(size: int = 80):
             for cx, cy in [(r, r), (size - r, r), (r, size - r), (size - r, size - r)]:
                 draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
 
-        # Lightning bolt polygon — SVG viewBox 0 0 24 24, scaled to PIL coords
-        # Points: top-right of bolt → down-left → across → down to tip → up-right → across → back
         s = size / 24.0
-        bolt = [
-            (13.5 * s, 2.0 * s),   # top tip
-            (7.0  * s, 13.0 * s),  # mid-left
-            (11.5 * s, 13.0 * s),  # mid notch
-            (10.5 * s, 22.0 * s),  # bottom tip
-            (17.0 * s, 11.0 * s),  # mid-right
-            (12.5 * s, 11.0 * s),  # mid notch right
-        ]
-        draw.polygon(bolt, fill=(255, 255, 255, 255))
+        W = (255, 255, 255, 255)
+        lw = max(2, int(2.6 * s))
 
-        # Subtle inner glow — slightly smaller bolt in a pale blue tint
-        glow = [
-            (13.5 * s, 4.5 * s),
-            (9.0  * s, 13.0 * s),
-            (12.0 * s, 13.0 * s),
-            (11.0 * s, 19.5 * s),
-            (15.5 * s, 11.0 * s),
-            (13.0 * s, 11.0 * s),
-        ]
-        draw.polygon(glow, fill=(180, 210, 255, 60))
+        # Geometric "A" — three clean strokes
+        # Left leg: apex → bottom-left
+        draw.line([(12 * s, 2.5 * s), (3.5 * s, 21.5 * s)], fill=W, width=lw)
+        # Right leg: apex → bottom-right
+        draw.line([(12 * s, 2.5 * s), (20.5 * s, 21.5 * s)], fill=W, width=lw)
+        # Crossbar at ~55% height
+        draw.line([(7.2 * s, 13.8 * s), (16.8 * s, 13.8 * s)], fill=W, width=lw)
 
         return img
     except Exception:
-        return "⚡"
+        return "A"
 
 
 _LOGO_PIL = _make_logo_pil(80)
@@ -97,25 +85,28 @@ API_BASE = _resolve_api_base()
 
 # ── LOGO ──────────────────────────────────────────────────────────────────────
 def _logo_html(size: int = 36, radius: int = 10) -> str:
-    """Bold lightning bolt — speed + intelligence mark for Adaptive RAG."""
-    ic = int(size * 0.68)
+    """Groq-style geometric 'A' mark — dark background, bold white strokes."""
+    ic = int(size * 0.75)
     return (
         f"<div style='width:{size}px;height:{size}px;"
-        "background:linear-gradient(145deg,#0e1850 0%,#1a2fa0 55%,#2563EB 100%);"
+        "background:#08091f;"
         f"border-radius:{radius}px;"
         "display:flex;align-items:center;justify-content:center;"
-        "box-shadow:0 4px 20px rgba(37,99,235,0.55),0 1px 5px rgba(0,0,0,0.30);"
+        "box-shadow:0 2px 16px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.07);"
         "flex-shrink:0'>"
 
-        f"<svg width='{ic}' height='{ic}' viewBox='0 0 24 24'"
+        f"<svg width='{ic}' height='{ic}' viewBox='0 0 24 24' fill='none'"
         " xmlns='http://www.w3.org/2000/svg'>"
 
-        # Bold white lightning bolt
-        "<polygon points='13.5,2 7,13 11.5,13 10.5,22 17,11 12.5,11'"
-        " fill='white'/>"
-        # Inner glow layer
-        "<polygon points='13.5,4.5 9,13 12,13 11,19.5 15.5,11 13,11'"
-        " fill='rgba(180,210,255,0.22)'/>"
+        # Left leg of A
+        "<line x1='12' y1='2.5' x2='3.5' y2='21.5'"
+        " stroke='white' stroke-width='2.6' stroke-linecap='round'/>"
+        # Right leg of A
+        "<line x1='12' y1='2.5' x2='20.5' y2='21.5'"
+        " stroke='white' stroke-width='2.6' stroke-linecap='round'/>"
+        # Crossbar
+        "<line x1='7.2' y1='13.8' x2='16.8' y2='13.8'"
+        " stroke='white' stroke-width='2.6' stroke-linecap='round'/>"
 
         "</svg></div>"
     )
