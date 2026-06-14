@@ -1,11 +1,18 @@
-# Adaptive RAG — Intelligent Document Intelligence
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=250&section=header&text=Adaptive%20RAG&fontSize=80&fontAlignY=35&desc=Intelligent%20Document%20Intelligence&descAlignY=55&descAlign=50" alt="Banner" />
+</p>
 
-> An end-to-end Retrieval-Augmented Generation system that dynamically routes queries across document knowledge bases, live web search, and general AI reasoning — deployed as a production-grade full-stack application.
+<h3 align="center">An end-to-end Retrieval-Augmented Generation system</h3>
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://adaptive-rag---knowledge-retrieval-3lzqznfonuduremjxvis7x.streamlit.app)
-[![API Docs](https://img.shields.io/badge/API%20Docs-Swagger%20UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://adaptive-rag-knowledge-retrieval.onrender.com/docs)
-[![Backend](https://img.shields.io/badge/Backend-FastAPI%20on%20Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://adaptive-rag-knowledge-retrieval.onrender.com)
-[![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Aditya0105singh/Adaptive-RAG---knowledge-retrieval)
+<p align="center">
+  <em>Dynamically routes queries across document knowledge bases, live web search, and general AI reasoning — deployed as a production-grade full-stack application.</em>
+</p>
+
+<p align="center">
+  <a href="https://adaptive-rag---knowledge-retrieval-3lzqznfonuduremjxvis7x.streamlit.app"><img src="https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo"></a>
+  <a href="https://adaptive-rag-knowledge-retrieval.onrender.com/docs"><img src="https://img.shields.io/badge/API%20Docs-Swagger%20UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" alt="API Docs"></a>
+  <a href="https://adaptive-rag-knowledge-retrieval.onrender.com"><img src="https://img.shields.io/badge/Backend-FastAPI%20on%20Render-46E3B7?style=for-the-badge&logo=render&logoColor=white" alt="Backend"></a>
+</p>
 
 ---
 
@@ -22,11 +29,11 @@
 
 ## 📸 Application Visuals
 
-> **Add your working visuals here!** 
-> Replace the placeholder image below with a GIF or screenshot of your working application. You can easily do this by dragging and dropping an image into the GitHub editor.
+> **Add the images you just shared!** 
+> To add the images from our chat, just go to your GitHub repository in your browser, click the pencil to edit `README.md`, and **drag-and-drop** your two images right below this line:
 
 <p align="center">
-  <img src="https://via.placeholder.com/800x400.png?text=Adaptive+RAG+Demo+Video+or+GIF" alt="Adaptive RAG Demo">
+  <img src="https://via.placeholder.com/800x400.png?text=Drag+and+Drop+Your+Two+Screenshots+Here" alt="Adaptive RAG Demo">
 </p>
 
 ---
