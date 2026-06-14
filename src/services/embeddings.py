@@ -1,59 +1,38 @@
-"""Embedding singleton using the HuggingFace Inference API.
+"""Embedding singleton — HuggingFace Hub InferenceClient (no local model).
 
-No local model is loaded — embeddings are computed on HF servers via HTTP.
-Uses requests (synchronous, already a dep) with retry on transient errors.
-Set HF_TOKEN env var for higher rate limits; works unauthenticated for demos.
+Uses huggingface_hub.InferenceClient which routes through
+router.huggingface.co (different hostname from the broken
+api-inference.huggingface.co). huggingface_hub is already installed
+as a transitive dependency so no new packages are needed.
+
+Set HF_TOKEN env var for higher rate limits.
 """
 import os
-import time
 from typing import List, Optional
 
-import requests as _requests
-
 _instance: Optional["_HFEmbeddings"] = None
-
-_HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-_HF_URL = f"https://api-inference.huggingface.co/models/{_HF_MODEL}"
+_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 class _HFEmbeddings:
     def __init__(self) -> None:
-        token = os.environ.get("HF_TOKEN", "")
-        self._headers = {"Authorization": f"Bearer {token}"} if token else {}
-        self._session = _requests.Session()
-        self._session.headers.update(self._headers)
-
-    def _post(self, payload: dict, retries: int = 3) -> list:
-        for attempt in range(retries):
-            try:
-                resp = self._session.post(_HF_URL, json=payload, timeout=60)
-                # 503 means model is loading — wait and retry
-                if resp.status_code == 503:
-                    time.sleep(10)
-                    continue
-                resp.raise_for_status()
-                return resp.json()
-            except (_requests.ConnectionError, _requests.Timeout) as exc:
-                if attempt == retries - 1:
-                    raise
-                time.sleep(3 * (attempt + 1))
-        raise RuntimeError("HF Inference API unavailable after retries")
+        from huggingface_hub import InferenceClient
+        token = os.environ.get("HF_TOKEN") or None
+        self._client = InferenceClient(provider="hf-inference", api_key=token)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        result = self._post({
-            "inputs": texts,
-            "options": {"wait_for_model": True},
-        })
-        return result
+        result = self._client.feature_extraction(texts, model=_MODEL)
+        # result is a numpy array of shape (n, dim) for list input
+        return result.tolist()
 
     def embed_query(self, text: str) -> List[float]:
-        result = self._post({
-            "inputs": text,
-            "options": {"wait_for_model": True},
-        })
-        if result and isinstance(result[0], list):
-            return result[0]
-        return result
+        result = self._client.feature_extraction(text, model=_MODEL)
+        # result is a numpy array of shape (dim,) for string input
+        arr = result.tolist()
+        # flatten if nested
+        if arr and isinstance(arr[0], list):
+            return arr[0]
+        return arr
 
 
 def get_embeddings() -> _HFEmbeddings:
