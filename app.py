@@ -1974,11 +1974,14 @@ if user_input:
 
         if stream_error or data is None:
             answer_ph.empty()
-            render_error_state(stream_error or "No response received from the backend.")
-            # Remove the user message we just appended — without an answer it
-            # would leave a permanent empty gap in the chat history on next render.
-            if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-                st.session_state.messages.pop()
+            err_msg = stream_error or "No response received from the backend."
+            render_error_state(err_msg)
+            # Save error as an assistant message so the conversation history is
+            # preserved and the user can see what went wrong without the question
+            # silently disappearing.
+            st.session_state.messages.append(
+                {"role": "assistant", "content": f"[Error: {err_msg}]", "meta": {"error": True}}
+            )
         else:
             final_answer = data.get("answer", full_answer)
             _src_chunks = data.get("source_chunks") or []

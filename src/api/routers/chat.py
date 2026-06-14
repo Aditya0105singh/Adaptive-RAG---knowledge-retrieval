@@ -200,10 +200,18 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
         final_state: dict = {}
         graph_done = False
         stream_error = None
+        last_heartbeat = time.time()
 
         while not graph_done:
             # Drain all immediately available tokens first.
             yield from drain_tokens()
+
+            # Keepalive comment every 5 s — prevents Render's reverse proxy
+            # from closing the idle SSE connection during slow operations.
+            now = time.time()
+            if now - last_heartbeat > 5:
+                yield ": keepalive\n\n"
+                last_heartbeat = now
 
             try:
                 evt_type, node_name, snap = stage_q.get(timeout=0.02)

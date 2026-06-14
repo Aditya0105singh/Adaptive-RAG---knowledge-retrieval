@@ -59,20 +59,19 @@ def _get_llm() -> ChatGroq:
     return _llm
 
 
-def _invoke_with_retry(messages, max_retries: int = 1, wait: int = 30):
-    """Invoke the LLM; auto-retry once on Groq 429, then raise."""
+def _invoke_with_retry(messages):
+    """Invoke the LLM; raise immediately on rate-limit with a user-friendly message."""
     llm = _get_llm()
-    for attempt in range(max_retries + 1):
-        try:
-            return llm.invoke(messages)
-        except Exception as exc:
-            msg = str(exc).lower()
-            is_rate_limit = "rate" in msg or "429" in msg or "rate_limit" in msg
-            if is_rate_limit and attempt < max_retries:
-                logger.warning("groq_rate_limit_retry", attempt=attempt + 1, wait_seconds=wait)
-                time.sleep(wait)
-            else:
-                raise
+    try:
+        return llm.invoke(messages)
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "rate" in msg or "429" in msg or "rate_limit" in msg:
+            raise RuntimeError(
+                "Rate limited — the AI model has reached its free-tier quota. "
+                "Please wait 60 seconds and try again. (Groq free tier: 6,000 tokens/minute)"
+            ) from exc
+        raise
 
 
 def _extract_usage(response) -> dict:
@@ -419,11 +418,12 @@ def generate_answer(state: GraphState) -> dict:
                 break  # stream completed successfully
             except Exception as exc:
                 msg = str(exc).lower()
-                if ("rate" in msg or "429" in msg) and attempt < 2:
-                    logger.warning("groq_rate_limit_stream_retry", attempt=attempt + 1)
-                    time.sleep(30)
-                else:
-                    raise
+                if "rate" in msg or "429" in msg or "rate_limit" in msg:
+                    raise RuntimeError(
+                        "Rate limited — the AI model has reached its free-tier quota. "
+                        "Please wait 60 seconds and try again. (Groq free tier: 6,000 tokens/minute)"
+                    ) from exc
+                raise
         answer = "".join(parts).strip()
         token_usage = _merge_usage(token_usage, _extract_usage(last_chunk) if last_chunk else {})
 
