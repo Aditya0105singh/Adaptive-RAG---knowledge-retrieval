@@ -6,7 +6,16 @@ from typing import List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
-from opentelemetry import trace
+try:
+    from opentelemetry import trace as _ot_trace
+    tracer = _ot_trace.get_tracer("adaptive_rag.nodes")
+except ImportError:
+    import contextlib as _contextlib
+    class _NoOpTracer:
+        @_contextlib.contextmanager
+        def start_as_current_span(self, name, **_):
+            yield None
+    tracer = _NoOpTracer()
 
 from src.agents.state import GraphState
 from src.core.config import settings
@@ -15,7 +24,6 @@ from src.services.retrieval import RetrievalService
 from src.services.search import TavilySearchService
 
 logger = get_logger(__name__)
-tracer = trace.get_tracer("adaptive_rag.nodes")
 
 # Thread-local storage so each SSE request gets its own token stream.
 # The SSE endpoint sets a callback before running the graph; generate_answer
