@@ -1,42 +1,66 @@
-"""Embedding singleton — HuggingFace Hub InferenceClient (no local model).
+"""Embedding singleton using the Cohere Embed API.
 
-Uses huggingface_hub.InferenceClient which routes through
-router.huggingface.co (different hostname from the broken
-api-inference.huggingface.co). huggingface_hub is already installed
-as a transitive dependency so no new packages are needed.
+Uses cohere's embed-english-light-v3.0 which outputs 384-dim vectors —
+identical dimension to all-MiniLM-L6-v2. No local model, no RAM overhead.
+Free tier: 1000 calls/month (plenty for a demo).
 
-Set HF_TOKEN env var for higher rate limits.
+Requires COHERE_API_KEY environment variable (free from dashboard.cohere.com).
 """
 import os
 from typing import List, Optional
 
-_instance: Optional["_HFEmbeddings"] = None
-_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+import requests as _requests
+
+_instance: Optional["_CohereEmbeddings"] = None
+_COHERE_URL = "https://api.cohere.com/v1/embed"
+_MODEL = "embed-english-light-v3.0"
 
 
-class _HFEmbeddings:
+class _CohereEmbeddings:
     def __init__(self) -> None:
-        from huggingface_hub import InferenceClient
-        token = os.environ.get("HF_TOKEN") or None
-        self._client = InferenceClient(provider="hf-inference", api_key=token)
+        api_key = os.environ.get("COHERE_API_KEY", "")
+        if not api_key:
+            raise RuntimeError(
+                "COHERE_API_KEY env var is not set. "
+                "Get a free key at dashboard.cohere.com and add it to Render."
+            )
+        self._session = _requests.Session()
+        self._session.headers.update({
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        })
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        result = self._client.feature_extraction(texts, model=_MODEL)
-        # result is a numpy array of shape (n, dim) for list input
-        return result.tolist()
+        resp = self._session.post(
+            _COHERE_URL,
+            json={
+                "model": _MODEL,
+                "texts": texts,
+                "input_type": "search_document",
+                "embedding_types": ["float"],
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["embeddings"]["float"]
 
     def embed_query(self, text: str) -> List[float]:
-        result = self._client.feature_extraction(text, model=_MODEL)
-        # result is a numpy array of shape (dim,) for string input
-        arr = result.tolist()
-        # flatten if nested
-        if arr and isinstance(arr[0], list):
-            return arr[0]
-        return arr
+        resp = self._session.post(
+            _COHERE_URL,
+            json={
+                "model": _MODEL,
+                "texts": [text],
+                "input_type": "search_query",
+                "embedding_types": ["float"],
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["embeddings"]["float"][0]
 
 
-def get_embeddings() -> _HFEmbeddings:
+def get_embeddings() -> _CohereEmbeddings:
     global _instance
     if _instance is None:
-        _instance = _HFEmbeddings()
+        _instance = _CohereEmbeddings()
     return _instance
