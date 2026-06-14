@@ -59,8 +59,8 @@ def _get_llm() -> ChatGroq:
     return _llm
 
 
-def _invoke_with_retry(messages, max_retries: int = 2, wait: int = 65):
-    """Invoke the LLM; auto-retry up to max_retries times on Groq 429 rate-limit errors."""
+def _invoke_with_retry(messages, max_retries: int = 1, wait: int = 30):
+    """Invoke the LLM; auto-retry once on Groq 429, then raise."""
     llm = _get_llm()
     for attempt in range(max_retries + 1):
         try:
@@ -421,7 +421,7 @@ def generate_answer(state: GraphState) -> dict:
                 msg = str(exc).lower()
                 if ("rate" in msg or "429" in msg) and attempt < 2:
                     logger.warning("groq_rate_limit_stream_retry", attempt=attempt + 1)
-                    time.sleep(65)
+                    time.sleep(30)
                 else:
                     raise
         answer = "".join(parts).strip()

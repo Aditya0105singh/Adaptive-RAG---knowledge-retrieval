@@ -31,7 +31,7 @@ class _CohereEmbeddings:
         })
 
     def _post(self, payload: dict) -> dict:
-        resp = self._session.post(_COHERE_URL, json=payload, timeout=60)
+        resp = self._session.post(_COHERE_URL, json=payload, timeout=8)
         if not resp.ok:
             try:
                 detail = resp.json()

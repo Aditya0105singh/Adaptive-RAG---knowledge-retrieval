@@ -1870,6 +1870,18 @@ pending = st.session_state.pop("pending_prompt", None)
 if pending and not user_input:
     user_input = pending
 
+# Guard: ignore identical message submitted within 2 seconds (double-click / double-enter)
+if user_input:
+    import time as _t
+    _now = _t.time()
+    _last_t = st.session_state.get("_last_submit_t", 0.0)
+    _last_c = st.session_state.get("_last_submit_c", "")
+    if user_input == _last_c and (_now - _last_t) < 2.0:
+        user_input = None
+    else:
+        st.session_state["_last_submit_t"] = _now
+        st.session_state["_last_submit_c"] = user_input
+
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input, "meta": None})
     with st.chat_message("user", avatar="👤"):
