@@ -19,16 +19,6 @@
 | **Health Check** | https://adaptive-rag-knowledge-retrieval.onrender.com/health |
 
 ---
-
-## 📸 Application Visuals
-
-> **Add your working visuals here!** 
-> Replace the placeholder image below with a GIF or screenshot of your working application. You can easily do this by dragging and dropping an image into the GitHub editor.
-
-<p align="center">
-  <img src="https://via.placeholder.com/800x400.png?text=Adaptive+RAG+Demo+Video+or+GIF" alt="Adaptive RAG Demo">
-</p>
-
 ---
 
 ## What It Does
