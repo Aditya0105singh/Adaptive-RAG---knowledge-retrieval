@@ -30,33 +30,33 @@ class _CohereEmbeddings:
             "Content-Type": "application/json",
         })
 
+    def _post(self, payload: dict) -> dict:
+        resp = self._session.post(_COHERE_URL, json=payload, timeout=60)
+        if not resp.ok:
+            try:
+                detail = resp.json()
+            except Exception:
+                detail = resp.text[:300]
+            raise RuntimeError(f"Cohere embed {resp.status_code}: {detail}")
+        return resp.json()
+
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        resp = self._session.post(
-            _COHERE_URL,
-            json={
-                "model": _MODEL,
-                "texts": texts,
-                "input_type": "search_document",
-                "embedding_types": ["float"],
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        return resp.json()["embeddings"]["float"]
+        data = self._post({
+            "model": _MODEL,
+            "texts": texts,
+            "input_type": "search_document",
+            "embedding_types": ["float"],
+        })
+        return data["embeddings"]["float"]
 
     def embed_query(self, text: str) -> List[float]:
-        resp = self._session.post(
-            _COHERE_URL,
-            json={
-                "model": _MODEL,
-                "texts": [text],
-                "input_type": "search_query",
-                "embedding_types": ["float"],
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        return resp.json()["embeddings"]["float"][0]
+        data = self._post({
+            "model": _MODEL,
+            "texts": [text],
+            "input_type": "search_query",
+            "embedding_types": ["float"],
+        })
+        return data["embeddings"]["float"][0]
 
 
 def get_embeddings() -> _CohereEmbeddings:

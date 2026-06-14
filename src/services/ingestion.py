@@ -16,7 +16,7 @@ from src.services.embeddings import get_embeddings
 
 logger = get_logger(__name__)
 
-EMBED_BATCH_SIZE = 100
+EMBED_BATCH_SIZE = 90  # Cohere embed API hard limit is 96 texts per request
 
 
 def split_text(text: str, chunk_size: int, overlap: int) -> List[str]:
