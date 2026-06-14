@@ -17,6 +17,7 @@ langgraph==1.2.4
 # Retrieval + storage
 qdrant-client==1.17.1
 pymongo==4.17.0
+huggingface-hub>=1.0.0
 
 # Web search
 tavily-python==0.7.26
