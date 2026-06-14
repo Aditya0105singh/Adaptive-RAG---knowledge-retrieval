@@ -20,7 +20,7 @@ except Exception:
 
 
 def _make_logo_pil(size: int = 80):
-    """Render the convergence mark as a PIL Image for use as page icon and chat avatar."""
+    """Render the neural-network mark as a PIL Image — matches the SVG in _logo_html."""
     try:
         from PIL import Image, ImageDraw
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -37,53 +37,40 @@ def _make_logo_pil(size: int = 80):
             for cx, cy in [(r, r), (size - r, r), (r, size - r), (size - r, size - r)]:
                 draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
 
-        s = size / 24  # scale: our SVG viewBox is 0 0 24 24
+        s = size / 24  # scale: SVG viewBox is 0 0 24 24
 
-        def _bezier(p0, ctrl, p2, steps=14):
-            pts = []
-            for i in range(steps + 1):
-                t = i / steps
-                x = (1 - t) ** 2 * p0[0] + 2 * t * (1 - t) * ctrl[0] + t ** 2 * p2[0]
-                y = (1 - t) ** 2 * p0[1] + 2 * t * (1 - t) * ctrl[1] + t ** 2 * p2[1]
-                pts.append((x * s, y * s))
-            return pts
+        def _circle(cx, cy, cr, fill_rgba=None, outline_rgba=None, lw=1):
+            x0, y0 = cx * s - cr * s, cy * s - cr * s
+            x1, y1 = cx * s + cr * s, cy * s + cr * s
+            if fill_rgba:
+                draw.ellipse([x0, y0, x1, y1], fill=fill_rgba)
+            if outline_rgba:
+                draw.ellipse([x0, y0, x1, y1], outline=outline_rgba, width=max(1, int(lw * s)))
 
-        tip = (20.0, 12.0)   # convergence point (dot centre)
+        def _line(x1, y1, x2, y2, rgba, lw):
+            draw.line([(x1 * s, y1 * s), (x2 * s, y2 * s)],
+                      fill=rgba, width=max(1, int(lw * s)))
 
-        # Middle straight line — full opacity
-        lw_mid = max(2, int(1.8 * s))
-        draw.line([(2.5 * s, 12 * s), (17 * s, 12 * s)],
-                  fill=(255, 255, 255, 215), width=lw_mid)
+        # Input nodes (left column)
+        _circle(3.8, 6,  1.6, fill_rgba=(255, 255, 255, 140))
+        _circle(3.8, 12, 1.6, fill_rgba=(255, 255, 255, 215))
+        _circle(3.8, 18, 1.6, fill_rgba=(255, 255, 255, 140))
 
-        # Top arc
-        lw_arc = max(1, int(1.35 * s))
-        top = _bezier((2.5, 5), (11, 5), tip)
-        for i in range(len(top) - 1):
-            draw.line([top[i], top[i + 1]], fill=(255, 255, 255, 140), width=lw_arc)
+        # Connections: inputs → hidden node
+        _line(5.4, 6.4,  9.5, 11.0, (255, 255, 255, 71),  1.1)
+        _line(5.4, 12.0, 9.5, 12.0, (255, 255, 255, 140), 1.4)
+        _line(5.4, 17.6, 9.5, 13.0, (255, 255, 255, 71),  1.1)
 
-        # Bottom arc
-        bot = _bezier((2.5, 19), (11, 19), tip)
-        for i in range(len(bot) - 1):
-            draw.line([bot[i], bot[i + 1]], fill=(255, 255, 255, 140), width=lw_arc)
+        # Hidden node ring
+        _circle(12, 12, 2.5, outline_rgba=(255, 255, 255, 209), lw=1.7)
 
-        # Outer glow ring around dot
-        gr = 5.5 * s
-        draw.ellipse(
-            [(tip[0] * s - gr, tip[1] * s - gr), (tip[0] * s + gr, tip[1] * s + gr)],
-            fill=(255, 255, 255, 18),
-        )
-        # Bright white dot
-        dr = 2.9 * s
-        draw.ellipse(
-            [(tip[0] * s - dr, tip[1] * s - dr), (tip[0] * s + dr, tip[1] * s + dr)],
-            fill=(255, 255, 255, 255),
-        )
-        # Inner highlight
-        hr = 1.0 * s
-        draw.ellipse(
-            [(19.2 * s - hr, 11.2 * s - hr), (19.2 * s + hr, 11.2 * s + hr)],
-            fill=(255, 255, 255, 90),
-        )
+        # Connection: hidden → output
+        _line(14.5, 12, 17.3, 12, (255, 255, 255, 225), 1.7)
+
+        # Output dot
+        _circle(20.2, 12, 2.8, fill_rgba=(255, 255, 255, 255))
+        _circle(19.4, 11.2, 0.9, fill_rgba=(255, 255, 255, 82))
+
         return img
     except Exception:
         return "✨"   # graceful fallback if PIL unavailable
@@ -876,12 +863,18 @@ def render_source_chunks(chunks: list) -> None:
             "<div style='font-size:12px;color:#475569;line-height:1.7'>"
             f"{html.escape(text)}</div></div>"
         )
-    # Auto-expanded — no <details> wrapper, sources are always visible
+    count = len(rows)
+    label = f"SOURCES ({count})"
     st.markdown(
+        "<details style='margin-top:8px'>"
+        "<summary style='cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+        "font-size:10px;font-weight:700;color:#64748B;letter-spacing:0.08em;"
+        "list-style:none;user-select:none;padding:4px 0'>"
+        "<span style='font-size:9px'>▶</span>"
+        f"<span>{label}</span>"
+        "</summary>"
         "<div style='margin-top:6px'>"
-        "<div style='font-size:10px;font-weight:700;color:#94A3B8;"
-        "letter-spacing:0.08em;margin-bottom:6px'>SOURCES</div>"
-        f"{''.join(rows)}</div>",
+        f"{''.join(rows)}</div></details>",
         unsafe_allow_html=True,
     )
 
