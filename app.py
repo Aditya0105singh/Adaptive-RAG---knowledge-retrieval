@@ -20,48 +20,66 @@ except Exception:
 
 
 def _make_logo_pil(size: int = 80):
-    """Three radiating signal arcs + source dot — Grok AI style, deep dark bg."""
+    """3-orbit atom mark — three elliptical orbits (doc/web/general routes), electrons at tips."""
     try:
         from PIL import Image, ImageDraw
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        # Very dark navy — matches Grok AI's near-black aesthetic
+        # Deep dark background
         r_bg = size // 5
-        bg = (6, 9, 32)
+        bg = (6, 8, 28)
         try:
             draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=r_bg, fill=bg)
         except (AttributeError, TypeError):
             draw.rectangle([0, 0, size, size], fill=bg)
-            for cx2, cy2 in [(r_bg, r_bg), (size-r_bg, r_bg), (r_bg, size-r_bg), (size-r_bg, size-r_bg)]:
-                draw.ellipse([cx2-r_bg, cy2-r_bg, cx2+r_bg, cy2+r_bg], fill=bg)
+            for bx, by in [(r_bg,r_bg),(size-r_bg,r_bg),(r_bg,size-r_bg),(size-r_bg,size-r_bg)]:
+                draw.ellipse([bx-r_bg,by-r_bg,bx+r_bg,by+r_bg], fill=bg)
 
-        s = size / 24.0
-        cx, cy = 7.0 * s, 12.0 * s   # source dot centre
+        s  = size / 24.0
+        cx = 12.0 * s
+        cy = 12.0 * s
+        rx = int(9.0 * s)
+        ry = int(3.5 * s)
+        lw = max(1, int(1.3 * s))
 
-        # Outer glow halo behind dot
-        gh = 3.2 * s
-        draw.ellipse([(cx-gh, cy-gh), (cx+gh, cy+gh)], fill=(80, 120, 255, 55))
+        # Draw three orbits at 0°, 60°, -60° by rotating on a temp layer
+        try:
+            resamp = Image.Resampling.BILINEAR
+        except AttributeError:
+            resamp = Image.BILINEAR  # Pillow < 9
 
-        # Source dot — full bright white
-        dr = 1.6 * s
+        for angle in (0, 60, -60):
+            layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            ld = ImageDraw.Draw(layer)
+            ld.arc(
+                [(int(cx-rx), int(cy-ry)), (int(cx+rx), int(cy+ry))],
+                0, 360, fill=(255, 255, 255, 128), width=lw,
+            )
+            if angle != 0:
+                layer = layer.rotate(-angle, center=(cx, cy), resample=resamp)
+            img = Image.alpha_composite(img, layer)
+
+        draw = ImageDraw.Draw(img)
+
+        # Electron dots at rightmost tip of each orbit (rotated positions)
+        import math
+        for angle_deg in (0, 60, -60):
+            a = math.radians(angle_deg)
+            ex = cx + 9.0 * s * math.cos(a)
+            ey = cy + 9.0 * s * math.sin(a)
+            er = 1.4 * s
+            draw.ellipse([(ex-er, ey-er), (ex+er, ey+er)], fill=(255, 255, 255, 255))
+
+        # Centre glow then dot
+        gh = 3.5 * s
+        draw.ellipse([(cx-gh, cy-gh), (cx+gh, cy+gh)], fill=(90, 140, 255, 65))
+        dr = 2.1 * s
         draw.ellipse([(cx-dr, cy-dr), (cx+dr, cy+dr)], fill=(255, 255, 255, 255))
-
-        # Three arcs: small / medium / large, decreasing brightness
-        arc_cfg = [
-            (3.5, (255, 255, 255, 255), max(2, int(2.0 * s))),
-            (6.0, (200, 210, 255, 165), max(2, int(1.7 * s))),
-            (9.0, (150, 165, 230,  90), max(1, int(1.4 * s))),
-        ]
-        for r_arc, color, lw in arc_cfg:
-            rp = r_arc * s
-            # PIL arc: 270°→90° clockwise = right-facing D-shape
-            draw.arc([(cx-rp, cy-rp), (cx+rp, cy+rp)],
-                     start=270, end=90, fill=color, width=lw)
 
         return img
     except Exception:
-        return "◉"
+        return "⚛"
 
 
 _LOGO_PIL = _make_logo_pil(80)
@@ -95,36 +113,49 @@ API_BASE = _resolve_api_base()
 
 # ── LOGO ──────────────────────────────────────────────────────────────────────
 def _logo_html(size: int = 36, radius: int = 10) -> str:
-    """Three radiating signal arcs + source dot — Grok AI aesthetic."""
-    ic = int(size * 0.82)
+    """3-orbit atom mark — doc / web / general routes as orbits, electrons at tips."""
+    ic = int(size * 0.86)
     return (
         f"<div style='width:{size}px;height:{size}px;"
-        "background:linear-gradient(150deg,#06091e 0%,#0b1038 100%);"
+        "background:linear-gradient(150deg,#06081c 0%,#0c1138 100%);"
         f"border-radius:{radius}px;"
         "display:flex;align-items:center;justify-content:center;"
-        "box-shadow:0 4px 24px rgba(37,99,235,0.30),0 0 0 1px rgba(255,255,255,0.07);"
+        "box-shadow:0 4px 28px rgba(37,99,235,0.28),0 0 0 1px rgba(255,255,255,0.08);"
         "flex-shrink:0'>"
 
         f"<svg width='{ic}' height='{ic}' viewBox='0 0 24 24' fill='none'"
         " xmlns='http://www.w3.org/2000/svg'>"
 
-        # Soft glow halo behind source dot
-        "<circle cx='7' cy='12' r='3.2' fill='rgba(80,130,255,0.18)'/>"
+        # Outer boundary ring — subtle frame
+        "<circle cx='12' cy='12' r='11' stroke='white' stroke-width='0.6' opacity='0.10'/>"
 
-        # Source dot — bright white
-        "<circle cx='7' cy='12' r='1.6' fill='white'/>"
+        # Orbit 1 — horizontal
+        "<ellipse cx='12' cy='12' rx='9' ry='3.5'"
+        " stroke='white' stroke-width='1.25' opacity='0.55'/>"
 
-        # Inner arc (r=3.5) — full white
-        "<path d='M7,8.5 A3.5,3.5 0 0,1 7,15.5'"
-        " stroke='white' stroke-width='2.0' stroke-linecap='round'/>"
+        # Orbit 2 — rotated 60°
+        "<ellipse cx='12' cy='12' rx='9' ry='3.5'"
+        " stroke='white' stroke-width='1.25' opacity='0.55'"
+        " transform='rotate(60 12 12)'/>"
 
-        # Middle arc (r=6) — 60% opacity
-        "<path d='M7,6 A6,6 0 0,1 7,18'"
-        " stroke='white' stroke-width='1.8' stroke-linecap='round' opacity='0.55'/>"
+        # Orbit 3 — rotated -60°
+        "<ellipse cx='12' cy='12' rx='9' ry='3.5'"
+        " stroke='white' stroke-width='1.25' opacity='0.55'"
+        " transform='rotate(-60 12 12)'/>"
 
-        # Outer arc (r=9) — 28% opacity
-        "<path d='M7,3 A9,9 0 0,1 7,21'"
-        " stroke='white' stroke-width='1.5' stroke-linecap='round' opacity='0.28'/>"
+        # Electron on orbit 1  (rightmost: 21, 12)
+        "<circle cx='21' cy='12' r='1.45' fill='white'/>"
+        # Electron on orbit 2  (21,12 rotated 60° around 12,12 → 16.5, 19.8)
+        "<circle cx='16.5' cy='19.8' r='1.45' fill='white'/>"
+        # Electron on orbit 3  (21,12 rotated -60° around 12,12 → 16.5, 4.2)
+        "<circle cx='16.5' cy='4.2' r='1.45' fill='white'/>"
+
+        # Centre glow
+        "<circle cx='12' cy='12' r='3.5' fill='rgba(90,145,255,0.22)'/>"
+        # Centre dot
+        "<circle cx='12' cy='12' r='2.1' fill='white'/>"
+        # Inner highlight
+        "<circle cx='11.1' cy='11.1' r='0.75' fill='white' opacity='0.35'/>"
 
         "</svg></div>"
     )
