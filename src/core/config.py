@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     GROQ_API_KEY: str = ""
+    # Optional comma-separated rotation pool for the evaluation suite (keys from
+    # different Groq accounts have independent daily quotas).
+    GROQ_API_KEYS: str = ""
+    COHERE_API_KEY: str = ""
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""
     MONGO_URI: str = "mongodb://localhost:27017"
@@ -53,6 +57,11 @@ class Settings(BaseSettings):
     # Port for the FastAPI backend (override when 8080 is taken by another app)
     API_PORT: int = 8080
 
+    # API-key authentication. Disabled by default so local dev needs no header;
+    # set ENABLE_AUTH=true and a strong API_KEY in production.
+    API_KEY: str = "dev-key-change-in-production"
+    ENABLE_AUTH: bool = False
+
     # Feature 3: Knowledge Gap Alerts
     ENABLE_KNOWLEDGE_GAPS: bool = True
     KNOWLEDGE_GAP_MODEL: str = "llama-3.3-70b-versatile"
@@ -67,3 +76,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# embeddings.py reads COHERE_API_KEY from os.environ directly (not via Settings).
+# When the key comes from .env it lands on the Settings object but not os.environ,
+# so bridge it across for local runs. On Render the var is already in os.environ.
+if settings.COHERE_API_KEY and "COHERE_API_KEY" not in os.environ:
+    os.environ["COHERE_API_KEY"] = settings.COHERE_API_KEY
+
+# Bridge the rotation pool into os.environ so the eval helpers (which read it
+# from the environment) can see a value supplied via .env.
+if settings.GROQ_API_KEYS and "GROQ_API_KEYS" not in os.environ:
+    os.environ["GROQ_API_KEYS"] = settings.GROQ_API_KEYS

@@ -118,6 +118,59 @@ flowchart TD
 
 ---
 
+## Benchmarks & Evaluation
+
+The system is quantitatively evaluated against a **Naive RAG baseline** (always
+retrieve, no grading, no routing, single shot) on the same document, the same
+test set, and the same Cohere embeddings — so the only variable is the adaptive
+control flow. Answer quality is scored with the industry-standard
+**[RAGAS](https://docs.ragas.io)** framework (judged by `llama-3.1-8b-instant`
+to stay within free-tier token limits).
+
+RAGAS scores are reference-free and judged by `llama-3.1-8b-instant`. Full
+output is in [`evaluate/results/comparison_report.md`](evaluate/results/comparison_report.md).
+
+| Metric | Naive RAG | Adaptive RAG | Δ |
+|--------|-----------|--------------|---|
+| Faithfulness | 0.759 | **0.816** | **+7%** |
+| Context Precision | 0.875 | **1.000** | **+14%** |
+| Answer Relevancy | 0.528 | 0.500 | ~tied |
+| Avg Latency (ms) | 1089 | 4773 | +3.7× (grading + rewrite cost) |
+
+The relevance grader filters off-topic chunks before generation, so the adaptive
+system reaches **perfect context precision** and higher faithfulness; the
+trade-off is added latency from the extra grading/rewrite LLM calls. Answer
+relevancy is statistically tied. _(8-question reference-document set; adaptive
+metrics over the 7 questions answered from the document.)_
+
+**Routing accuracy: 25/25 (100%)** on a labelled set spanning all three routes
+(`evaluate/test_routing.py`) — the tri-route classifier correctly sent document
+questions to `index`, real-time questions to `search`, and off-topic questions
+to `general`. **Measured latency** (13 successful calls; search route unavailable
+during this run due to Groq free-tier rate limits):
+
+| Route | n | P50 | P95 | P99 |
+|-------|---|-----|-----|-----|
+| index | 10 | 20,918 ms | 24,345 ms | 24,345 ms |
+| general | 3 | 3,448 ms | 3,579 ms | 3,579 ms |
+| search | 0 | n/a | n/a | n/a |
+| **overall** | **13** | **19,279 ms** | **23,562 ms** | **24,345 ms** |
+
+The index route's higher latency reflects the full grading + optional rewrite
+pipeline; the general route bypasses retrieval and grading entirely. Raw records
+are in [`evaluate/results/benchmark_results.json`](evaluate/results/benchmark_results.json).
+
+```bash
+python main.py                       # terminal 1 — backend on :8080
+python evaluate/ragas_eval.py        # RAGAS scores for the adaptive system
+python evaluate/naive_rag.py         # RAGAS scores for the naive baseline
+python evaluate/compare.py           # writes results/comparison_report.md
+python evaluate/test_routing.py      # routing accuracy
+python evaluate/benchmark_latency.py # per-route latency
+```
+
+---
+
 ## Tech Stack
 
 ### Backend

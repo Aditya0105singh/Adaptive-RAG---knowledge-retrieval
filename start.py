@@ -43,9 +43,9 @@ def _wait_for_backend(timeout: int) -> bool:
 def main() -> None:
     _ensure_secrets_toml()
 
-    print("\n  Adaptive RAG — starting up\n")
-    print(f"  Backend  → {BACKEND_URL}")
-    print(f"  Frontend → {FRONTEND_URL}")
+    print("\n  Adaptive RAG - starting up\n")
+    print(f"  Backend  -> {BACKEND_URL}")
+    print(f"  Frontend -> {FRONTEND_URL}")
     print()
 
     kwargs: dict = {}
@@ -74,8 +74,9 @@ def main() -> None:
     )
 
     time.sleep(2)
-    webbrowser.open(FRONTEND_URL)
-    print(f"\n  App running at {FRONTEND_URL}")
+    webbrowser.open(BACKEND_URL)
+    print(f"\n  New HTML App running at {BACKEND_URL}")
+    print(f"  Legacy Streamlit running at {FRONTEND_URL}")
     print("  Press Ctrl+C to stop both servers.\n")
 
     def _shutdown(sig, frame):

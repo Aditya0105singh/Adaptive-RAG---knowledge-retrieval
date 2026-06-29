@@ -5,11 +5,12 @@ import threading
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.agents.graph import app as graph_app
 from src.agents.nodes import set_token_callback
+from src.api.middleware.auth import verify_api_key
 from src.api.schemas import ChatRequest, ChatResponse
 from src.core.config import settings
 from src.core.database import get_chat_collection
@@ -117,7 +118,7 @@ def _build_response(final_state: dict) -> ChatResponse:
     )
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
 async def chat(request: ChatRequest) -> ChatResponse:
     """Run a question through the adaptive RAG graph and persist the turn."""
     try:
@@ -145,7 +146,7 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(verify_api_key)])
 async def chat_stream(request: ChatRequest) -> StreamingResponse:
     """Stream pipeline stage events AND real LLM tokens concurrently.
 

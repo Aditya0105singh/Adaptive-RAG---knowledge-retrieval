@@ -1,0 +1,210 @@
+{
+  "timestamp": "2026-06-29T01:43:02.496918+00:00",
+  "total": 25,
+  "correct": 25,
+  "accuracy_pct": 100.0,
+  "router_decision_accuracy_pct": 100.0,
+  "index_to_search_fallbacks": 0,
+  "cases": [
+    {
+      "question": "What is the main topic of this document?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What methodology or approach is described?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What are the limitations mentioned?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "Summarize the introduction section",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What technologies or tools are referenced?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What future work is suggested?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What are the main contributions?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What problem does this document address?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What does the document say about evaluation?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "explicit doc ref"
+    },
+    {
+      "question": "What are the main components or sections?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "According to the document, what is naive RAG?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "explicit doc ref"
+    },
+    {
+      "question": "What is the overall conclusion of the document?",
+      "expected": "index",
+      "got": "index",
+      "correct": true,
+      "fallback": false,
+      "reason": "doc question"
+    },
+    {
+      "question": "What is the weather in Jaipur today?",
+      "expected": "search",
+      "got": "search",
+      "correct": true,
+      "fallback": false,
+      "reason": "real-time info"
+    },
+    {
+      "question": "What is the latest AI news in 2026?",
+      "expected": "search",
+      "got": "search",
+      "correct": true,
+      "fallback": false,
+      "reason": "current events"
+    },
+    {
+      "question": "What is the current stock price of Apple?",
+      "expected": "search",
+      "got": "search",
+      "correct": true,
+      "fallback": false,
+      "reason": "live price"
+    },
+    {
+      "question": "Who won the most recent ICC cricket match?",
+      "expected": "search",
+      "got": "search",
+      "correct": true,
+      "fallback": false,
+      "reason": "recent event"
+    },
+    {
+      "question": "What are today's top news headlines?",
+      "expected": "search",
+      "got": "search",
+      "correct": true,
+      "fallback": false,
+      "reason": "real-time info"
+    },
+    {
+      "question": "What is the newest GPT model released this month?",
+      "expected": "search",
+      "got": "search",
+      "correct": true,
+      "fallback": false,
+      "reason": "current events"
+    },
+    {
+      "question": "What is 2 + 2?",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "pure math, no doc"
+    },
+    {
+      "question": "Tell me a joke",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "casual, no doc"
+    },
+    {
+      "question": "What is Python?",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "general knowledge, no doc"
+    },
+    {
+      "question": "Hello, how are you?",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "greeting, no doc"
+    },
+    {
+      "question": "Explain what a binary search tree is",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "general knowledge, no doc"
+    },
+    {
+      "question": "What is the capital of France?",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "general knowledge, no doc"
+    },
+    {
+      "question": "Write a haiku about the ocean",
+      "expected": "general",
+      "got": "general",
+      "correct": true,
+      "fallback": false,
+      "reason": "creative, no doc"
+    }
+  ]
+}

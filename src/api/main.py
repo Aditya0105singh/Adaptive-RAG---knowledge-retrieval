@@ -6,8 +6,9 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
-from src.api.routers import chat, suggestions, upload
+from src.api.routers import chat, suggestions, upload, system
 from src.core.config import settings
 from src.core.database import close_connections, get_mongo_client, get_qdrant_client
 from src.core.logging import get_logger
@@ -84,18 +85,17 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
-@app.get("/", include_in_schema=False)
-async def root():
-    """Redirect browser visits to the interactive API docs."""
-    return RedirectResponse(url="/docs")
-
-
 @app.get("/health")
 async def health() -> dict:
     """Liveness probe for the Streamlit backend-status indicator."""
     return {"status": "ok"}
 
-
 app.include_router(chat.router)
 app.include_router(upload.router)
 app.include_router(suggestions.router)
+app.include_router(system.router)
+
+# Mount the frontend directory to serve index.html and other static assets
+import os
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend")
+app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
