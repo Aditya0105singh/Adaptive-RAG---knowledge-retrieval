@@ -1,3 +1,8 @@
+// --- API Base URL (auto-detects: localhost in dev, Render in production) ---
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? ''
+    : 'https://adaptive-rag-knowledge-retrieval.onrender.com';
+
 // --- State Management ---
 function getOrCreateSessionId() {
     let sid = localStorage.getItem('adaptive_rag_session');
@@ -39,7 +44,7 @@ function showToast(message, type = 'info', duration = 4000) {
 // --- API Helper Functions ---
 async function updateSessionCost() {
     try {
-        const res = await fetch(`/api/sessions/${SESSION_ID}/cost`);
+        const res = await fetch(`${API_BASE}/api/sessions/${SESSION_ID}/cost`);
         const data = await res.json();
         const costEl = document.querySelector('.session-cost-val');
         if (costEl && data.total_cost_usd !== undefined) {
@@ -60,7 +65,7 @@ async function updatePipelineInspector(metadata) {
 
     if (!lastMetadata) {
         try {
-            const res = await fetch(`/api/sessions/${SESSION_ID}/last-metadata`);
+            const res = await fetch(`${API_BASE}/api/sessions/${SESSION_ID}/last-metadata`);
             const data = await res.json();
             if (data && !data.status) lastMetadata = data;
         } catch (err) {
@@ -135,7 +140,7 @@ async function checkSystemHealth() {
     });
 
     try {
-        const res = await fetch('/api/system-status');
+        const res = await fetch(API_BASE + '/api/system-status');
         const data = await res.json();
         services.forEach(svc => {
             const card = document.getElementById(`svc-${svc}`);
@@ -192,7 +197,7 @@ async function loadBenchmarks() {
     }
 
     try {
-        const res = await fetch('/api/benchmarks');
+        const res = await fetch(API_BASE + '/api/benchmarks');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -355,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('session_id', SESSION_ID);
 
         try {
-            const res = await fetch('/api/upload', {
+            const res = await fetch(API_BASE + '/api/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -765,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ac.comparisonSection.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:8px 0;"><i class="ph ph-spinner"></i> Running embedding comparison...</div>`;
 
         try {
-            const res = await fetch('/api/grounding/compare', {
+            const res = await fetch(API_BASE + '/api/grounding/compare', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -865,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let sseBuffer = "";
 
         try {
-            const response = await fetch('/api/chat/stream', {
+            const response = await fetch(API_BASE + '/api/chat/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1016,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fetch embedding comparison
             demoLoading.style.display = 'block';
             try {
-                const res = await fetch('/api/grounding/compare', {
+                const res = await fetch(API_BASE + '/api/grounding/compare', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ answer: DEMO_ANSWER, chunks: [DEMO_CHUNK], llm_results: LLM_RESULTS })

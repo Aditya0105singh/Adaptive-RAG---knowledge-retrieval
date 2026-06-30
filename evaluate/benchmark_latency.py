@@ -27,7 +27,7 @@ from _common import (
 
 RESULTS_JSON = RESULTS_DIR / "benchmark_results.json"
 NODOC_SESSION = f"{EVAL_SESSION_ID}-nodoc"
-INTER_CALL_DELAY = 1.5
+INTER_CALL_DELAY = 12  # 12s gap keeps TPM ~3k, well under Groq 6k/min free tier
 
 LATENCY_TEST_CASES = {
     "index": [
@@ -36,35 +36,20 @@ LATENCY_TEST_CASES = {
         "What problem does this document address?",
         "What technologies or tools are referenced?",
         "What are the limitations mentioned?",
-        "What future work is suggested?",
-        "What are the main contributions?",
-        "What does the document say about evaluation criteria?",
-        "What are the main components or sections?",
-        "What is the overall conclusion?",
     ],
     "general": [
         "What is machine learning?",
         "Explain neural networks in simple terms",
         "What is the difference between a list and a tuple in Python?",
         "What is 17 multiplied by 23?",
-        "Tell me a short joke",
-        "What is the capital of Japan?",
-        "Explain what recursion is",
-        "What is a hash table?",
-        "Write a one-line motivational quote",
         "What does HTTP stand for?",
     ],
     "search": [
         "What is the latest GPT model in 2026?",
         "What is the current stock price of Apple?",
         "What is the weather in Mumbai today?",
-        "What are today's top technology headlines?",
         "Who is the current CEO of OpenAI?",
         "What is the latest news about artificial intelligence?",
-        "What is the most recent SpaceX launch?",
-        "What is trending on the internet right now?",
-        "What is the latest version of Python released?",
-        "What recent breakthroughs happened in AI this year?",
     ],
 }
 
