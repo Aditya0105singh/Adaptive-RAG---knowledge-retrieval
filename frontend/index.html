@@ -6,7 +6,7 @@
 <title>Adaptive RAG Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
@@ -647,6 +647,163 @@
     font-weight: 600;
   }
 
+  /* ── 3-level progressive disclosure response card ── */
+  .response-card { border-left: 3px solid var(--primary); }
+
+  .query-bubble {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px; background: #F8FAFC; border-radius: 8px;
+    margin-bottom: 14px; font-size: 13px; color: var(--text-muted);
+    border-left: 3px solid #CBD5E1;
+  }
+
+  .answer-body {
+    font-size: 14px; line-height: 1.75; color: var(--text-main);
+    margin-bottom: 14px;
+  }
+  .answer-body p { margin-bottom: 10px; }
+  .answer-body ul, .answer-body ol { margin-left: 20px; margin-bottom: 10px; }
+  .answer-body code { font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    background: #F1F5F9; padding: 1px 5px; border-radius: 4px; }
+
+  .badge-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 0; border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border); margin-bottom: 12px;
+  }
+  .badge-route {
+    font-size: 12px; font-weight: 700; padding: 3px 10px;
+    border-radius: 99px; letter-spacing: 0.02em;
+  }
+  .badge-route.route-index  { background: #CCFBF1; color: #0F766E; }
+  .badge-route.route-search { background: #DBEAFE; color: #1D4ED8; }
+  .badge-route.route-general{ background: #F1F5F9; color: #475569; }
+  .badge-mono {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    color: var(--text-muted);
+  }
+  .badge-trust {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    font-weight: 700; padding: 3px 10px; border-radius: 99px;
+  }
+  .badge-trust.trust-high     { background: #D1FAE5; color: #065F46; }
+  .badge-trust.trust-moderate { background: #FEF3C7; color: #92400E; }
+  .badge-trust.trust-low      { background: #FEE2E2; color: #991B1B; }
+
+  .reasoning-summary, .breakdown-summary, .metadata-summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center;
+    gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted);
+    padding: 10px 0; user-select: none;
+  }
+  .reasoning-summary::-webkit-details-marker,
+  .breakdown-summary::-webkit-details-marker,
+  .metadata-summary::-webkit-details-marker { display: none; }
+
+  .chunk-bar-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .chunk-bar-label { font-size: 12px; color: var(--text-muted); width: 54px; flex-shrink: 0; }
+  .chunk-bar-track { flex: 1; height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden; }
+  .chunk-bar-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  .chunk-bar-score { font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    font-weight: 700; width: 36px; text-align: right; flex-shrink: 0; }
+  .chunk-bar-qual  { font-size: 11px; width: 64px; flex-shrink: 0; }
+
+  .verification-line {
+    font-size: 13px; margin-bottom: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .v-grounded  { color: #065F46; font-weight: 700; }
+  .v-inferred  { color: #92400E; font-weight: 700; }
+  .v-ungrounded{ color: #991B1B; font-weight: 700; }
+
+  .trust-bar-track { height: 6px; background: #E2E8F0; border-radius: 99px;
+    overflow: hidden; margin-bottom: 6px; }
+  .trust-bar-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+
+  /* Sentence breakdown rows */
+  .sentence-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid #F1F5F9;
+    font-size: 13px; line-height: 1.5;
+  }
+  .sentence-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+  }
+  .dot-grounded  { background: #059669; }
+  .dot-inferred  { background: #D97706; }
+  .dot-ungrounded{ background: #DC2626; }
+  .sentence-text { flex: 1; color: var(--text-main);
+    display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden; }
+  .sentence-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 2px 7px; border-radius: 4px; flex-shrink: 0; margin-top: 3px;
+  }
+  .label-grounded   { background: #D1FAE5; color: #065F46; }
+  .label-inferred   { background: #FEF3C7; color: #92400E; }
+  .label-ungrounded { background: #FEE2E2; color: #991B1B; }
+
+  /* Filter toggle buttons */
+  .filter-btn {
+    font-size: 12px; padding: 4px 12px; border-radius: 99px;
+    border: 1px solid var(--border); background: white;
+    color: var(--text-muted); cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .filter-btn.active {
+    background: var(--primary-light); color: var(--primary);
+    border-color: var(--primary); font-weight: 600;
+  }
+
+  /* Comparison table */
+  .comparison-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .comparison-table th {
+    text-align: left; font-weight: 700; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--text-muted); padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .comparison-table td { padding: 7px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: top; }
+  .comparison-table tr:hover td { background: #F8FAFC; }
+  .match-yes { color: #059669; font-weight: 700; }
+  .match-no  { color: #DC2626; font-weight: 700; }
+
+  /* Knowledge gap card */
+  .gap-card { margin-top: 8px; }
+  .gap-card details {
+    border: 1px solid #BFDBFE; border-left: 3px solid #3A6EA5;
+    border-radius: 8px; overflow: hidden;
+  }
+  .gap-card summary {
+    cursor: pointer; list-style: none; padding: 11px 14px;
+    background: #EFF6FF; display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: #1E40AF; user-select: none;
+  }
+  .gap-card summary::-webkit-details-marker { display: none; }
+  .gap-card-body { padding: 12px 14px; background: white; }
+  .gap-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid #DBEAFE;
+    font-size: 13px; color: #1E3A8A;
+  }
+  .gap-item:last-child { border-bottom: none; }
+
+  /* Sources details */
+  .sources-details summary {
+    cursor: pointer; list-style: none; font-size: 12px;
+    color: var(--text-muted); padding: 8px 0; user-select: none;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sources-details summary::-webkit-details-marker { display: none; }
+  .source-chip {
+    display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px;
+    background: #F8FAFC; border: 1px solid var(--border); border-radius: 6px;
+    margin-bottom: 6px; font-size: 12px;
+  }
+  .source-chip-text { color: var(--text-muted); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden; }
+
   .upload-box {
     border: 1.5px dashed var(--border);
     border-radius: 8px;
@@ -902,7 +1059,6 @@
       <div class="rail-item active" data-target="tab-chat" title="Chat"><i class="ph ph-chat-teardrop-text"></i></div>
       <div class="rail-item" data-target="tab-pipeline" title="Pipeline Inspector"><i class="ph ph-graph"></i></div>
       <div class="rail-item" data-target="tab-benchmarks" title="Benchmarks"><i class="ph ph-chart-bar"></i></div>
-      <div class="rail-item" data-target="tab-grounding" title="Grounding Lab"><i class="ph ph-flask"></i></div>
       <div class="rail-item" data-target="tab-system" title="System Status"><i class="ph ph-gear"></i></div>
     </div>
     <div class="rail-bottom">
@@ -978,7 +1134,6 @@
       <div class="nav-tab active" data-target="tab-chat"><i class="ph ph-chat-teardrop-text"></i> Chat</div>
       <div class="nav-tab" data-target="tab-pipeline"><i class="ph ph-magnifying-glass"></i> Pipeline Inspector</div>
       <div class="nav-tab" data-target="tab-benchmarks"><i class="ph ph-chart-bar"></i> Benchmarks</div>
-      <div class="nav-tab" data-target="tab-grounding"><i class="ph ph-flask"></i> Grounding Lab</div>
       <div class="nav-tab" data-target="tab-system"><i class="ph ph-gear"></i> System</div>
       <div style="margin-left:auto;">
         <button id="new-chat-btn" style="display:none; align-items:center; gap:6px; background:white; border:1px solid var(--border); color:var(--text-muted); padding:7px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s;">
@@ -1209,6 +1364,44 @@
               <pre id="pi-raw-body" style="background:#1E293B; padding:16px; border-radius:8px; color:#A7F3D0; font-size:11px; overflow-x:auto; display:none; line-height:1.7; margin:0;"></pre>
             </div>
           </div>
+
+          <!-- Grounding Lab: worked example (moved from former Grounding Lab tab) -->
+          <div class="card" style="margin-top:20px; border-left:3px solid #3B82F6;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+              <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">Grounding Analysis — Live Example</div>
+              <button id="demo-grounding-btn" style="margin-left:auto; font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px; background:var(--primary); color:white; border:none; cursor:pointer; font-family:inherit;">▶ Try a live example</button>
+            </div>
+            <div id="demo-grounding-content" style="display:none;">
+              <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px; padding:10px 14px; background:#F8FAFC; border-radius:8px; border-left:3px solid #CBD5E1;">
+                <strong style="color:var(--text-main);">Answer being analyzed:</strong><br>
+                <span id="demo-answer-text" style="font-size:12px; line-height:1.6;"></span>
+              </div>
+
+              <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:10px;">Sentence Breakdown</div>
+              <div id="demo-sentence-list"></div>
+
+              <div id="demo-comparison" style="display:none; margin-top:20px;">
+                <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px;">Method Comparison — LLM Judge vs Embedding Cosine Similarity</div>
+                <table class="comparison-table">
+                  <thead>
+                    <tr>
+                      <th>Sentence (truncated)</th>
+                      <th>LLM Judge</th>
+                      <th>Embedding</th>
+                      <th style="font-family:'IBM Plex Mono',monospace;">Sim</th>
+                      <th>Match?</th>
+                    </tr>
+                  </thead>
+                  <tbody id="demo-comparison-body"></tbody>
+                </table>
+                <div id="demo-comparison-stats" style="margin-top:12px; font-size:12px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;"></div>
+              </div>
+
+              <div id="demo-loading" style="display:none; font-size:13px; color:var(--text-muted); padding:12px 0;">
+                <i class="ph ph-spinner" style="font-size:16px; margin-right:6px;"></i> Running embedding comparison...
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1264,18 +1457,6 @@
         </div>
       </div>
 
-      <div id="tab-grounding" class="tab-content" style="display: none;">
-        <div class="content-max">
-            <div class="card">
-                <div class="section-title">GROUNDING LAB</div>
-                <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Inspect how sentences map back to source chunks.</div>
-                <div style="padding:16px; background:#FAFAFA; border:1px solid var(--border); border-radius:8px; text-align:center; color:var(--text-muted); font-size:13px;">
-                    <i class="ph ph-file-magnifying-glass" style="font-size:32px; margin-bottom:8px;"></i><br/>
-                    Submit a query in the Chat tab first to see grounding analysis here.
-                </div>
-            </div>
-        </div>
-      </div>
 
       <div id="tab-system" class="tab-content" style="display: none;">
         <div class="content-max">

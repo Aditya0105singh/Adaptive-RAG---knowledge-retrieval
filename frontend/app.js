@@ -405,8 +405,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const newChatBtn = document.getElementById('new-chat-btn');
     if (newChatBtn) {
         newChatBtn.addEventListener('click', () => {
-            // Remove all response cards (keep hero + grid)
-            const responseCards = document.querySelectorAll('#tab-chat .content-max > .card');
+            // Remove all answer wrappers (keep hero + grid)
+            const responseCards = document.querySelectorAll('#tab-chat .content-max > .answer-wrapper');
             responseCards.forEach(c => c.remove());
 
             // Restore landing
@@ -429,26 +429,143 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.querySelector('.btn-send');
     const contentMax = document.querySelector('#tab-chat .content-max');
 
-    function createStepContainer(query) {
-        const container = document.createElement('div');
-        container.className = 'card';
-        container.style.marginBottom = '24px';
-        container.innerHTML = `
-            <div class="section-title">RESPONSE</div>
-            <div class="step-container">
-                <div class="step-query">
-                    <i class="ph ph-chat-teardrop-text" style="color:var(--text-muted); font-size:18px;"></i>
-                    "${query}"
-                </div>
-                <div class="steps-list"></div>
+    // --- Utility ---
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // --- 3-level progressive disclosure answer card ---
+    function createAnswerCard(query) {
+        const wrapper = document.createElement('div');
+        wrapper.style.marginBottom = '24px';
+
+        const card = document.createElement('div');
+        card.className = 'card response-card';
+        card.innerHTML = `
+            <div class="query-bubble">
+                <i class="ph ph-user-circle" style="font-size:16px; flex-shrink:0; margin-top:1px;"></i>
+                <span>${escHtml(query)}</span>
             </div>
+
+            <!-- Level 1: answer text -->
+            <div class="answer-body"><span class="live-answer" style="white-space:pre-wrap;"></span></div>
+
+            <!-- Level 1: badge row (shown after metadata) -->
+            <div class="badge-row" style="display:none;">
+                <span class="badge-route">—</span>
+                <span class="badge-mono badge-latency"></span>
+                <span class="badge-mono badge-cost"></span>
+                <span class="badge-trust">—</span>
+                <span class="badge-loops" style="display:none; font-size:11px; color:var(--text-muted);"></span>
+            </div>
+
+            <!-- Level 1: sources -->
+            <details class="sources-details" style="display:none; margin-bottom:8px;">
+                <summary><i class="ph ph-files" style="font-size:13px;"></i> <span class="sources-count">Sources</span></summary>
+                <div class="sources-list" style="margin-top:8px;"></div>
+            </details>
+
+            <!-- Level 2: View AI reasoning -->
+            <details class="reasoning-details" open>
+                <summary class="reasoning-summary">
+                    <i class="ph ph-caret-right" style="font-size:12px; transition:transform 0.2s;" class="caret-icon"></i>
+                    View AI reasoning
+                </summary>
+                <div class="reasoning-content" style="padding-top:8px;">
+
+                    <!-- Pipeline trace (shown while streaming, hidden after) -->
+                    <div class="pipeline-trace"></div>
+
+                    <!-- Retrieval quality bars -->
+                    <div class="retrieval-quality" style="display:none; margin-bottom:16px;">
+                        <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px;">Retrieval Quality</div>
+                        <div class="chunk-bars"></div>
+                    </div>
+
+                    <!-- Verification summary -->
+                    <div class="verification-summary" style="display:none; margin-bottom:12px;"></div>
+
+                    <!-- Level 3a: sentence breakdown -->
+                    <details class="breakdown-details" style="display:none;">
+                        <summary class="breakdown-summary">
+                            <i class="ph ph-caret-right" style="font-size:12px;"></i>
+                            See sentence breakdown
+                        </summary>
+                        <div style="padding-top:10px;">
+                            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                                <button class="filter-btn active" data-filter="flagged">Show flagged only</button>
+                                <button class="filter-btn" data-filter="all">Show all</button>
+                            </div>
+                            <div class="sentence-list"></div>
+                            <!-- Grounding comparison (populated async) -->
+                            <div class="comparison-section" style="display:none; margin-top:20px; padding-top:16px; border-top:1px solid var(--border);"></div>
+                        </div>
+                    </details>
+
+                    <!-- Level 3b: raw metadata -->
+                    <details class="metadata-details" style="display:none;">
+                        <summary class="metadata-summary">
+                            <i class="ph ph-caret-right" style="font-size:12px;"></i>
+                            Raw metadata
+                        </summary>
+                        <pre class="metadata-json" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#334155; overflow-x:auto; margin-top:8px; background:#F8FAFC; padding:12px; border-radius:6px; white-space:pre-wrap;"></pre>
+                    </details>
+                </div>
+            </details>
         `;
+        wrapper.appendChild(card);
+
+        // Knowledge gap card (separate, below)
+        const gapCard = document.createElement('div');
+        gapCard.className = 'gap-card';
+        gapCard.style.display = 'none';
+        wrapper.appendChild(gapCard);
+
+        // Filter toggle wiring
+        card.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                card.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const mode = btn.getAttribute('data-filter');
+                card.querySelectorAll('.sentence-row').forEach(row => {
+                    const label = row.getAttribute('data-label');
+                    if (mode === 'all' || label === 'INFERRED' || label === 'UNGROUNDED') {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+
         return {
-            element: container,
-            stepsList: container.querySelector('.steps-list')
+            element: wrapper,
+            card: card,
+            liveAnswer: card.querySelector('.live-answer'),
+            badgeRow: card.querySelector('.badge-row'),
+            badgeRoute: card.querySelector('.badge-route'),
+            badgeLatency: card.querySelector('.badge-latency'),
+            badgeCost: card.querySelector('.badge-cost'),
+            badgeTrust: card.querySelector('.badge-trust'),
+            badgeLoops: card.querySelector('.badge-loops'),
+            sourcesDetails: card.querySelector('.sources-details'),
+            sourcesList: card.querySelector('.sources-list'),
+            sourcesCount: card.querySelector('.sources-count'),
+            reasoningDetails: card.querySelector('.reasoning-details'),
+            pipelineTrace: card.querySelector('.pipeline-trace'),
+            retrievalQuality: card.querySelector('.retrieval-quality'),
+            chunkBars: card.querySelector('.chunk-bars'),
+            verificationSummary: card.querySelector('.verification-summary'),
+            breakdownDetails: card.querySelector('.breakdown-details'),
+            sentenceList: card.querySelector('.sentence-list'),
+            comparisonSection: card.querySelector('.comparison-section'),
+            metadataDetails: card.querySelector('.metadata-details'),
+            metadataJson: card.querySelector('.metadata-json'),
+            gapCard: gapCard,
         };
     }
 
+    // Kept for Pipeline Inspector "How it works" static example
     function createStepHTML(num, iconHTML, title, desc, status = 'active') {
         const bgColor = status === 'done' ? 'background:var(--primary); color:white;' :
                          status === 'error' ? 'background:#DC2626; color:white;' : '';
@@ -462,6 +579,243 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
+    }
+
+    function addPipelineStep(traceEl, iconHTML, title, desc, status = 'active') {
+        const div = document.createElement('div');
+        div.innerHTML = createStepHTML('•', iconHTML, title, desc, status);
+        traceEl.appendChild(div.firstElementChild);
+    }
+
+    // --- Fill answer card from metadata event ---
+    function fillAnswerCard(ac, evt, answer) {
+        // Render markdown answer
+        if (ac.liveAnswer) {
+            if (typeof marked !== 'undefined') {
+                ac.liveAnswer.innerHTML = marked.parse(answer);
+                ac.liveAnswer.style.whiteSpace = '';
+            } else {
+                ac.liveAnswer.innerText = answer;
+            }
+        }
+
+        // Badge row
+        const route = (evt.route_taken || 'general').toLowerCase();
+        const routeLabel = { index: 'Document', search: 'Web Search', general: 'General' }[route] || route;
+        ac.badgeRoute.textContent = routeLabel;
+        ac.badgeRoute.className = `badge-route route-${route}`;
+
+        const latMs = evt.processing_ms || 0;
+        ac.badgeLatency.textContent = latMs >= 1000 ? `${(latMs/1000).toFixed(1)}s` : `${latMs}ms`;
+        ac.badgeCost.textContent = `$${(evt.estimated_cost_usd || 0).toFixed(4)}`;
+
+        const grounding = evt.grounding;
+        const summary = grounding && !grounding.skipped ? grounding.summary : null;
+        if (summary) {
+            const pct = Math.round(summary.trust_score * 100);
+            const lvl = summary.trust_level || 'LOW';
+            ac.badgeTrust.textContent = `${lvl} · ${pct}%`;
+            const trustClass = { HIGH: 'trust-high', MODERATE: 'trust-moderate', LOW: 'trust-low' }[lvl] || 'trust-low';
+            ac.badgeTrust.className = `badge-trust ${trustClass}`;
+        } else {
+            ac.badgeTrust.style.display = 'none';
+        }
+
+        const loops = evt.loops_executed || 0;
+        if (loops > 1) {
+            ac.badgeLoops.textContent = `${loops} loops`;
+            ac.badgeLoops.style.display = '';
+        }
+        ac.badgeRow.style.display = 'flex';
+
+        // Source citations
+        const chunks = evt.source_chunks || [];
+        if (chunks.length > 0) {
+            ac.sourcesCount.textContent = `Sources (${chunks.length})`;
+            chunks.forEach((c, i) => {
+                const chip = document.createElement('div');
+                chip.className = 'source-chip';
+                const fname = c.filename || `Chunk ${i+1}`;
+                const preview = (c.text || '').slice(0, 180).replace(/</g,'&lt;');
+                chip.innerHTML = `
+                    <i class="ph ph-file-text" style="font-size:14px; color:var(--text-muted); flex-shrink:0; margin-top:2px;"></i>
+                    <div>
+                        <div style="font-size:11px; font-weight:700; color:var(--text-main); margin-bottom:3px;">${escHtml(fname)}</div>
+                        <div class="source-chip-text" style="font-size:11px; color:var(--text-muted);">${preview}${c.text && c.text.length > 180 ? '…' : ''}</div>
+                    </div>`;
+                ac.sourcesList.appendChild(chip);
+            });
+            ac.sourcesDetails.style.display = '';
+        }
+
+        // Retrieval quality bars
+        const scores = evt.relevance_scores || [];
+        if (scores.length > 0 && route === 'index') {
+            const topScores = scores.slice(0, 4);
+            topScores.forEach((score, i) => {
+                const pct = Math.round(score * 100);
+                const color = pct >= 70 ? '#059669' : pct >= 45 ? '#D97706' : '#DC2626';
+                const qual = pct >= 70 ? 'Strong' : pct >= 45 ? 'Moderate' : 'Weak';
+                const row = document.createElement('div');
+                row.className = 'chunk-bar-row';
+                row.innerHTML = `
+                    <span class="chunk-bar-label">Chunk ${i+1}</span>
+                    <div class="chunk-bar-track"><div class="chunk-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+                    <span class="chunk-bar-score" style="color:${color};">${(score).toFixed(2)}</span>
+                    <span class="chunk-bar-qual" style="color:${color}; font-size:11px;">${qual}</span>`;
+                ac.chunkBars.appendChild(row);
+            });
+            if (scores.length > 4) {
+                const more = document.createElement('div');
+                more.style.cssText = 'font-size:11px; color:var(--text-muted); padding:4px 0;';
+                more.textContent = `and ${scores.length - 4} more chunks`;
+                ac.chunkBars.appendChild(more);
+            }
+            ac.retrievalQuality.style.display = '';
+        }
+
+        // Verification summary + trust bar
+        if (summary) {
+            const pct = Math.round(summary.trust_score * 100);
+            const barColor = pct >= 70 ? '#059669' : pct >= 40 ? '#D97706' : '#DC2626';
+            ac.verificationSummary.innerHTML = `
+                <span class="verification-line">
+                    <span class="v-grounded">${summary.grounded_count} verified</span> ·
+                    <span class="v-inferred">${summary.inferred_count} inferred</span> ·
+                    <span class="v-ungrounded">${summary.ungrounded_count} unsupported</span>
+                </span>
+                <div class="trust-bar-track" style="margin-top:6px;">
+                    <div class="trust-bar-fill" style="width:${pct}%; background:${barColor};"></div>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-family:'IBM Plex Mono',monospace;">
+                    ${pct}% of sentences directly supported by document (${summary.trust_level})
+                </div>`;
+            ac.verificationSummary.style.display = '';
+
+            // Sentence breakdown
+            const results = grounding.results || [];
+            if (results.length > 0) {
+                results.forEach(r => {
+                    const label = r.label || 'INFERRED';
+                    const dotClass = { GROUNDED: 'dot-grounded', INFERRED: 'dot-inferred', UNGROUNDED: 'dot-ungrounded' }[label] || 'dot-inferred';
+                    const labelClass = { GROUNDED: 'label-grounded', INFERRED: 'label-inferred', UNGROUNDED: 'label-ungrounded' }[label] || 'label-inferred';
+                    const row = document.createElement('div');
+                    row.className = 'sentence-row';
+                    row.setAttribute('data-label', label);
+                    // Default: hide GROUNDED rows (show flagged only)
+                    if (label === 'GROUNDED') row.style.display = 'none';
+                    row.innerHTML = `
+                        <span class="sentence-dot ${dotClass}"></span>
+                        <span class="sentence-text">${escHtml(r.sentence || '')}</span>
+                        <span class="sentence-label ${labelClass}">${label}</span>`;
+                    ac.sentenceList.appendChild(row);
+                });
+                ac.breakdownDetails.style.display = '';
+            }
+        }
+
+        // Knowledge gap card
+        const gaps = evt.knowledge_gaps;
+        if (gaps && gaps.length > 0) {
+            const gapItems = gaps.map(g => `
+                <div class="gap-item">
+                    <i class="ph ph-arrow-right" style="color:#3A6EA5; flex-shrink:0; font-size:13px; margin-top:2px;"></i>
+                    <span>${escHtml(g)}</span>
+                </div>`).join('');
+            ac.gapCard.innerHTML = `
+                <details>
+                    <summary>
+                        <i class="ph ph-lightbulb" style="font-size:16px;"></i>
+                        ${gaps.length} knowledge gap${gaps.length > 1 ? 's' : ''} found
+                        <span style="font-weight:400; margin-left:4px;">— click to see what's missing</span>
+                        <i class="ph ph-caret-down" style="margin-left:auto; font-size:13px;"></i>
+                    </summary>
+                    <div class="gap-card-body">
+                        ${gapItems}
+                        <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Try uploading relevant documents to fill these gaps.</div>
+                    </div>
+                </details>`;
+            ac.gapCard.style.display = '';
+        }
+
+        // Answer refined badge (inside reasoning, below pipeline trace)
+        if (evt.answer_improvement) {
+            const ref = document.createElement('div');
+            ref.style.cssText = 'margin-top:8px; padding:8px 12px; background:#F0FDF4; border:1px solid #6EE7B7; border-radius:8px; font-size:12px; color:#065F46; display:flex; gap:8px; align-items:flex-start;';
+            ref.innerHTML = `<i class="ph-fill ph-arrows-clockwise" style="color:#059669; flex-shrink:0; margin-top:1px;"></i><span><strong>Answer refined:</strong> ${escHtml(evt.answer_improvement)}</span>`;
+            ac.pipelineTrace.after(ref);
+        }
+
+        // Raw metadata
+        ac.metadataJson.textContent = JSON.stringify(evt, null, 2);
+        ac.metadataDetails.style.display = '';
+
+        // Close reasoning panel now that answer is ready
+        ac.reasoningDetails.open = false;
+    }
+
+    // --- Grounding comparison (async, after done_all) ---
+    async function fetchGroundingComparison(ac, evt) {
+        const grounding = evt.grounding;
+        if (!grounding || grounding.skipped || !grounding.results || grounding.results.length === 0) return;
+        const chunks = (evt.source_chunks || []).map(c => c.text).filter(Boolean);
+        if (chunks.length === 0) return;
+
+        ac.comparisonSection.style.display = '';
+        ac.comparisonSection.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding:8px 0;"><i class="ph ph-spinner"></i> Running embedding comparison...</div>`;
+
+        try {
+            const res = await fetch('/api/grounding/compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    answer: evt.answer || '',
+                    chunks: chunks,
+                    llm_results: grounding.results,
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            const rows = data.comparison.map(c => {
+                const llmClass = { GROUNDED: 'label-grounded', INFERRED: 'label-inferred', UNGROUNDED: 'label-ungrounded' }[c.llm] || '';
+                const embClass = { GROUNDED: 'label-grounded', INFERRED: 'label-inferred', UNGROUNDED: 'label-ungrounded' }[c.embedding] || '';
+                const short = escHtml((c.sentence || '').slice(0, 60)) + (c.sentence.length > 60 ? '…' : '');
+                return `<tr>
+                    <td style="color:var(--text-muted);">${short}</td>
+                    <td><span class="sentence-label ${llmClass}">${c.llm}</span></td>
+                    <td><span class="sentence-label ${embClass}">${c.embedding}</span></td>
+                    <td style="font-family:'IBM Plex Mono',monospace; font-size:11px;">${c.similarity.toFixed(2)}</td>
+                    <td class="${c.match ? 'match-yes' : 'match-no'}">${c.match ? '✓' : '✗'}</td>
+                </tr>`;
+            }).join('');
+
+            const agePct = Math.round((data.agreement_rate || 0) * 100);
+            const llmMs = (grounding.summary && grounding.summary.total_latency_ms) || '?';
+            const embMs = data.embedding_latency_ms || 0;
+
+            ac.comparisonSection.innerHTML = `
+                <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px;">Method Comparison — LLM Judge vs Embedding Cosine</div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Sentence</th><th>LLM Judge</th><th>Embedding</th>
+                            <th style="font-family:'IBM Plex Mono',monospace;">Sim</th><th>Match?</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <div style="margin-top:10px; font-size:11px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;">
+                    Agreement: <strong style="color:var(--text-main);">${agePct}%</strong>
+                    (${data.agreement_count}/${data.total_sentences}) ·
+                    LLM latency: <strong>${llmMs}ms</strong> ·
+                    Embedding: <strong>${embMs}ms</strong> ·
+                    LLM cost: <strong>$${((grounding.summary?.grounded_count||0 + grounding.summary?.inferred_count||0 + grounding.summary?.ungrounded_count||0) * 0.00001).toFixed(5)}</strong> ·
+                    Embedding cost: <strong>$0.00</strong>
+                </div>`;
+        } catch (err) {
+            ac.comparisonSection.innerHTML = `<div style="font-size:12px; color:#DC2626; padding:8px 0;">Embedding comparison failed: ${escHtml(err.message)}</div>`;
+        }
     }
 
     // --- Launch Demo Button ---
@@ -483,7 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.disabled = true;
         if (sendBtn) sendBtn.disabled = true;
 
-        const chatBlock = createStepContainer(text);
+        const ac = createAnswerCard(text);
 
         // Hide landing page elements and suggested prompts on first message
         const defaultGrid = document.querySelector('#tab-chat .grid-2');
@@ -496,21 +850,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show New Chat button
         if (newChatBtn) newChatBtn.style.display = 'flex';
 
-        if (contentMax) contentMax.appendChild(chatBlock.element);
+        if (contentMax) contentMax.appendChild(ac.element);
 
         // Auto-scroll to new message
         const contentDiv = document.querySelector('.content');
         if (contentDiv) setTimeout(() => { contentDiv.scrollTop = contentDiv.scrollHeight; }, 50);
 
-        chatBlock.stepsList.innerHTML = createStepHTML(
-            "1",
-            '<i class="ph-fill ph-spinner" style="color:#F59E0B; font-size:16px;"></i>',
-            "Routing...",
-            "Analyzing query intent"
-        );
+        // Initial pipeline step
+        addPipelineStep(ac.pipelineTrace,
+            '<i class="ph-fill ph-spinner" style="color:#F59E0B; font-size:14px;"></i>',
+            "Routing…", "Analyzing query intent");
 
         let answer = "";
-        let stepNum = 1;
         let sseBuffer = "";
 
         try {
@@ -556,71 +907,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             const evt = JSON.parse(dataStr);
 
                             if (evt.type === 'stage') {
-                                if (evt.stage === 'routing') {
-                                    chatBlock.stepsList.innerHTML = createStepHTML(
-                                        stepNum,
-                                        '<i class="ph-fill ph-map-pin" style="color:#F59E0B; font-size:16px;"></i>',
-                                        "Routing",
-                                        evt.message || "Classifying your question..."
-                                    );
-                                }
-                                else if (evt.stage === 'routed') {
-                                    chatBlock.stepsList.innerHTML = createStepHTML(
-                                        stepNum++,
-                                        '<i class="ph-fill ph-map-pin" style="color:#F59E0B; font-size:16px;"></i>',
-                                        "Route Classification",
-                                        `LLM decides: <strong>${(evt.route || 'GENERAL').toUpperCase()}</strong>`,
-                                        'done'
-                                    );
-                                }
-                                else if (evt.stage === 'retrieving') {
-                                    chatBlock.stepsList.innerHTML += createStepHTML(
-                                        stepNum,
-                                        '<i class="ph ph-magnifying-glass" style="color:#3B82F6; font-size:16px; font-weight:bold;"></i>',
-                                        "Semantic Retrieval",
-                                        evt.message || "Searching your document..."
-                                    );
-                                }
-                                else if (evt.stage === 'retrieved') {
-                                    chatBlock.stepsList.innerHTML += createStepHTML(
-                                        stepNum++,
-                                        '<i class="ph-fill ph-check-circle" style="color:#10B981; font-size:16px;"></i>',
-                                        "Chunks Graded",
-                                        evt.message || "Relevance scoring complete",
-                                        'done'
-                                    );
-                                }
-                                else if (evt.stage === 'rewriting') {
-                                    chatBlock.stepsList.innerHTML += createStepHTML(
-                                        stepNum++,
-                                        '<i class="ph ph-pencil-simple" style="color:#8B5CF6; font-size:16px;"></i>',
-                                        "Query Rewrite",
-                                        evt.message || "Rewriting query for better retrieval...",
-                                        'done'
-                                    );
-                                }
-                                else if (evt.stage === 'searching_web') {
-                                    chatBlock.stepsList.innerHTML += createStepHTML(
-                                        stepNum,
-                                        '<i class="ph ph-globe" style="color:#3B82F6; font-size:16px;"></i>',
-                                        "Web Search",
-                                        evt.message || "Searching the web..."
-                                    );
-                                }
-                                else if (evt.stage === 'generating') {
-                                    chatBlock.stepsList.innerHTML += createStepHTML(
-                                        stepNum++,
-                                        '<i class="ph ph-magic-wand" style="color:#F59E0B; font-size:16px;"></i>',
-                                        "Generating Answer",
-                                        `<span class="live-answer"></span>`
-                                    );
-                                }
+                                const stageMap = {
+                                    routing:      ['<i class="ph ph-map-pin" style="color:#F59E0B;font-size:14px;"></i>', 'Routing'],
+                                    routed:       ['<i class="ph-fill ph-map-pin" style="color:#F59E0B;font-size:14px;"></i>', `Route → ${(evt.route||'').toUpperCase()}`],
+                                    retrieving:   ['<i class="ph ph-magnifying-glass" style="color:#3B82F6;font-size:14px;"></i>', 'Retrieving'],
+                                    retrieved:    ['<i class="ph-fill ph-check-circle" style="color:#10B981;font-size:14px;"></i>', 'Chunks graded'],
+                                    rewriting:    ['<i class="ph ph-pencil-simple" style="color:#8B5CF6;font-size:14px;"></i>', 'Query rewrite'],
+                                    searching_web:['<i class="ph ph-globe" style="color:#3B82F6;font-size:14px;"></i>', 'Web search'],
+                                    generating:   ['<i class="ph ph-magic-wand" style="color:#F59E0B;font-size:14px;"></i>', 'Generating'],
+                                    done:         ['<i class="ph-fill ph-check" style="color:#10B981;font-size:14px;"></i>', 'Done'],
+                                };
+                                const [icon, title] = stageMap[evt.stage] || ['•', evt.stage];
+                                addPipelineStep(ac.pipelineTrace, icon, title, evt.message || '');
                             }
                             else if (evt.type === 'token') {
                                 answer += evt.content || '';
-                                const answerSpan = chatBlock.stepsList.querySelector('.live-answer');
-                                if (answerSpan) {
-                                    answerSpan.innerText = answer;
+                                if (ac.liveAnswer) {
+                                    ac.liveAnswer.textContent = answer;
                                     if (contentDiv) contentDiv.scrollTop = contentDiv.scrollHeight;
                                 }
                             }
@@ -635,66 +938,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                     grounding: evt.grounding,
                                     answer_improvement: evt.answer_improvement,
                                     knowledge_gaps: evt.knowledge_gaps,
+                                    source_chunks: evt.source_chunks,
+                                    answer: answer,
                                 };
-
-                                const answerSpan = chatBlock.stepsList.querySelector('.live-answer');
-                                if (answerSpan && answer) {
-                                    if (typeof marked !== 'undefined') {
-                                        answerSpan.innerHTML = marked.parse(answer);
-                                    } else {
-                                        answerSpan.innerText = answer;
-                                    }
-                                }
-
-                                if (evt.grounding && evt.grounding.overall_score !== undefined) {
-                                    const score = (evt.grounding.overall_score * 100).toFixed(0);
-                                    chatBlock.stepsList.innerHTML += createStepHTML(
-                                        stepNum++,
-                                        '<i class="ph-fill ph-shield-check" style="color:#3B82F6; font-size:16px;"></i>',
-                                        "Grounding Verification",
-                                        `Overall grounding score: <strong>${score}%</strong>`,
-                                        'done'
-                                    );
-                                    updateGroundingLab(evt.grounding);
-                                }
-
-                                if (evt.knowledge_gaps && evt.knowledge_gaps.length > 0) {
-                                    const gapItems = evt.knowledge_gaps.map(g =>
-                                        `<div style="margin-bottom:4px; display:flex; gap:6px;"><i class="ph ph-warning" style="color:#F59E0B; flex-shrink:0; margin-top:2px;"></i><span>${g}</span></div>`
-                                    ).join('');
-                                    chatBlock.stepsList.innerHTML += `<div style="margin-top:10px; padding:10px 14px; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; font-size:12px; color:#92400E;">
-                                        <div style="font-weight:700; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; font-size:10px;">Knowledge Gaps Detected</div>
-                                        ${gapItems}
-                                    </div>`;
-                                }
-
-                                if (evt.answer_improvement) {
-                                    chatBlock.stepsList.innerHTML += `<div style="margin-top:8px; padding:8px 12px; background:#F0FDF4; border:1px solid #6EE7B7; border-radius:8px; font-size:12px; color:#065F46; display:flex; gap:8px; align-items:flex-start;">
-                                        <i class="ph-fill ph-arrows-clockwise" style="color:#059669; flex-shrink:0; margin-top:1px;"></i>
-                                        <span><strong>Answer refined:</strong> ${evt.answer_improvement}</span>
-                                    </div>`;
-                                }
-
-                                chatBlock.stepsList.innerHTML += createStepHTML(
-                                    stepNum,
-                                    '<i class="ph-fill ph-check-circle" style="color:#10B981; font-size:16px;"></i>',
-                                    "Complete",
-                                    `Processed in ${evt.processing_ms}ms · Cost: $${(evt.estimated_cost_usd || 0).toFixed(4)} · Route: ${evt.route_taken}`,
-                                    'done'
-                                );
+                                fillAnswerCard(ac, { ...evt, answer }, answer);
                             }
                             else if (evt.type === 'done_all') {
                                 updateSessionCost();
                                 updatePipelineInspector(lastMetadata);
+                                fetchGroundingComparison(ac, lastMetadata);
                             }
                             else if (evt.type === 'error') {
-                                chatBlock.stepsList.innerHTML += createStepHTML(
-                                    "!",
-                                    '<i class="ph-fill ph-warning" style="color:#DC2626; font-size:16px;"></i>',
-                                    "Error",
-                                    evt.message || "An unknown error occurred",
-                                    'error'
-                                );
+                                const errDiv = document.createElement('div');
+                                errDiv.style.cssText = 'color:#DC2626; margin-top:10px; font-size:13px; padding:10px; background:#FEF2F2; border-radius:8px;';
+                                errDiv.innerHTML = `<i class="ph-fill ph-warning"></i> ${escHtml(evt.message || 'An unknown error occurred')}`;
+                                ac.pipelineTrace.appendChild(errDiv);
                                 showToast("Chat error: " + (evt.message || "Unknown"), "error");
                             }
                         } catch (e) {
@@ -705,7 +963,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error("Chat error:", err);
-            chatBlock.stepsList.innerHTML += `<div style="color:#DC2626; margin-top:10px; font-size:13px;"><i class="ph-fill ph-warning"></i> Error: ${err.message}</div>`;
+            const errDiv = document.createElement('div');
+            errDiv.style.cssText = 'color:#DC2626; margin-top:10px; font-size:13px; padding:10px; background:#FEF2F2; border-radius:8px;';
+            errDiv.innerHTML = `<i class="ph-fill ph-warning"></i> Error: ${escHtml(err.message)}`;
+            ac.pipelineTrace.appendChild(errDiv);
             showToast("Chat request failed: " + err.message, "error");
         } finally {
             chatInput.disabled = false;
@@ -714,36 +975,77 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateGroundingLab(groundingData) {
-        const groundingContainer = document.querySelector('#tab-grounding .card');
-        if (!groundingContainer || !groundingData) return;
+    // --- Pipeline Inspector: "Try a live example" grounding demo ---
+    const demoBtn = document.getElementById('demo-grounding-btn');
+    if (demoBtn) {
+        demoBtn.addEventListener('click', async () => {
+            const demoContent = document.getElementById('demo-grounding-content');
+            const demoAnswerEl = document.getElementById('demo-answer-text');
+            const demoSentenceList = document.getElementById('demo-sentence-list');
+            const demoComparison = document.getElementById('demo-comparison');
+            const demoComparisonBody = document.getElementById('demo-comparison-body');
+            const demoStats = document.getElementById('demo-comparison-stats');
+            const demoLoading = document.getElementById('demo-loading');
+            if (!demoContent) return;
 
-        let html = `<div class="section-title">GROUNDING LAB</div>`;
-        html += `<div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Sentence-level grounding analysis from the last query.</div>`;
+            demoContent.style.display = 'block';
+            demoBtn.disabled = true;
+            demoBtn.textContent = 'Loading…';
 
-        const score = (groundingData.overall_score * 100).toFixed(0);
-        const scoreColor = score >= 80 ? '#059669' : score >= 50 ? '#F59E0B' : '#DC2626';
-        html += `<div style="margin-bottom:16px; padding:12px 16px; background:#F0FDF4; border:1px solid #6EE7B7; border-radius:8px; display:flex; align-items:center; gap:16px;">
-            <div style="font-size:13px; font-weight:500;">Overall Grounding Score</div>
-            <span style="color:${scoreColor}; font-weight:800; font-size:22px; font-family:monospace; margin-left:auto;">${score}%</span>
-        </div>`;
+            const DEMO_ANSWER = "The system uses LangGraph for agentic workflow orchestration. This approach likely reduces hallucination compared to naive RAG. The system processes over 10,000 queries per day.";
+            const DEMO_CHUNK = "LangGraph is used to define the agentic graph with nodes for routing, retrieval, grading, and generation. The adaptive routing mechanism classifies each query into index, search, or general routes before retrieval.";
+            const LLM_RESULTS = [
+                { sentence: "The system uses LangGraph for agentic workflow orchestration.", label: "GROUNDED" },
+                { sentence: "This approach likely reduces hallucination compared to naive RAG.", label: "INFERRED" },
+                { sentence: "The system processes over 10,000 queries per day.", label: "UNGROUNDED" },
+            ];
 
-        if (groundingData.sentence_scores && groundingData.sentence_scores.length > 0) {
-            html += `<div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:10px;">SENTENCE BREAKDOWN</div>`;
-            groundingData.sentence_scores.forEach((item, idx) => {
-                const s = ((item.score || 0) * 100).toFixed(0);
-                const c = s >= 80 ? '#059669' : s >= 50 ? '#F59E0B' : '#EF4444';
-                html += `<div style="padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Sentence ${idx + 1}</span>
-                        <span style="color:${c}; font-weight:700; font-family:monospace;">${s}%</span>
-                    </div>
-                    <div style="font-size:13px; color:var(--text-main); line-height:1.5;">${item.sentence || ''}</div>
-                </div>`;
+            if (demoAnswerEl) demoAnswerEl.textContent = DEMO_ANSWER;
+
+            // Render sentence breakdown
+            demoSentenceList.innerHTML = '';
+            LLM_RESULTS.forEach(r => {
+                const dotClass = { GROUNDED: 'dot-grounded', INFERRED: 'dot-inferred', UNGROUNDED: 'dot-ungrounded' }[r.label];
+                const lblClass = { GROUNDED: 'label-grounded', INFERRED: 'label-inferred', UNGROUNDED: 'label-ungrounded' }[r.label];
+                const row = document.createElement('div');
+                row.className = 'sentence-row';
+                row.innerHTML = `<span class="sentence-dot ${dotClass}"></span><span class="sentence-text">${escHtml(r.sentence)}</span><span class="sentence-label ${lblClass}">${r.label}</span>`;
+                demoSentenceList.appendChild(row);
             });
-        }
 
-        groundingContainer.innerHTML = html;
+            // Fetch embedding comparison
+            demoLoading.style.display = 'block';
+            try {
+                const res = await fetch('/api/grounding/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answer: DEMO_ANSWER, chunks: [DEMO_CHUNK], llm_results: LLM_RESULTS })
+                });
+                const data = await res.json();
+                demoLoading.style.display = 'none';
+
+                demoComparisonBody.innerHTML = data.comparison.map(c => {
+                    const llmC = { GROUNDED: 'label-grounded', INFERRED: 'label-inferred', UNGROUNDED: 'label-ungrounded' }[c.llm] || '';
+                    const embC = { GROUNDED: 'label-grounded', INFERRED: 'label-inferred', UNGROUNDED: 'label-ungrounded' }[c.embedding] || '';
+                    return `<tr>
+                        <td style="color:var(--text-muted); font-size:11px;">${escHtml(c.sentence.slice(0,55))}…</td>
+                        <td><span class="sentence-label ${llmC}">${c.llm}</span></td>
+                        <td><span class="sentence-label ${embC}">${c.embedding}</span></td>
+                        <td style="font-family:'IBM Plex Mono',monospace; font-size:11px;">${c.similarity.toFixed(2)}</td>
+                        <td class="${c.match ? 'match-yes' : 'match-no'}">${c.match ? '✓' : '✗'}</td>
+                    </tr>`;
+                }).join('');
+
+                const agePct = Math.round((data.agreement_rate || 0) * 100);
+                demoStats.textContent = `Agreement: ${agePct}% (${data.agreement_count}/${data.total_sentences}) · Embedding latency: ${data.embedding_latency_ms}ms · Embedding cost: $0.00`;
+                demoComparison.style.display = 'block';
+            } catch (e) {
+                demoLoading.style.display = 'none';
+                demoLoading.textContent = `Failed: ${e.message}`;
+                demoLoading.style.display = 'block';
+            }
+            demoBtn.textContent = '✓ Loaded';
+        });
     }
 
     if (sendBtn) {
