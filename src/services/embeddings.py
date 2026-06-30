@@ -18,20 +18,38 @@ _MODEL = "embed-english-light-v3.0"
 
 class _CohereEmbeddings:
     def __init__(self) -> None:
-        api_key = os.environ.get("COHERE_API_KEY", "")
-        if not api_key:
+        self._api_key = os.environ.get("COHERE_API_KEY", "")
+        if not self._api_key:
             raise RuntimeError(
                 "COHERE_API_KEY env var is not set. "
                 "Get a free key at dashboard.cohere.com and add it to Render."
             )
-        self._session = _requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {api_key}",
+        self._session = self._make_session()
+
+    def _make_session(self) -> "_requests.Session":
+        s = _requests.Session()
+        s.headers.update({
+            "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         })
+        return s
 
     def _post(self, payload: dict) -> dict:
-        resp = self._session.post(_COHERE_URL, json=payload, timeout=8)
+        """POST to Cohere, retrying once on stale-connection errors.
+
+        requests.Session reuses TCP connections; Cohere closes idle sockets
+        server-side, producing RemoteDisconnected on the next use. Discard
+        the session and retry once with a fresh connection on that error.
+        """
+        for attempt in range(2):
+            try:
+                resp = self._session.post(_COHERE_URL, json=payload, timeout=15)
+                break
+            except _requests.exceptions.ConnectionError:
+                if attempt == 1:
+                    raise
+                self._session.close()
+                self._session = self._make_session()
         if not resp.ok:
             try:
                 detail = resp.json()

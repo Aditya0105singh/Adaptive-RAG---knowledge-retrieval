@@ -25,7 +25,7 @@ def get_qdrant_client() -> QdrantClient:
             client = QdrantClient(
                 url=settings.QDRANT_URL,
                 api_key=settings.QDRANT_API_KEY or None,
-                timeout=10,
+                timeout=30,
             )
             # Verify connectivity — raises if Qdrant is not actually running.
             client.get_collections()
