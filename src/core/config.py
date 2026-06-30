@@ -30,9 +30,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     GROQ_API_KEY: str = ""
-    # Optional comma-separated rotation pool for the evaluation suite (keys from
-    # different Groq accounts have independent daily quotas).
+    # Optional comma-separated rotation pool — each key has its own TPM bucket.
     GROQ_API_KEYS: str = ""
+    # Fallback providers — add any key to activate that provider automatically.
+    GOOGLE_API_KEY: str = ""    # Gemini 2.0 Flash — 1M tokens/day free
+    CEREBRAS_API_KEY: str = ""  # Cerebras Llama 3.3 70B — very fast, generous free tier
     COHERE_API_KEY: str = ""
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""
@@ -87,3 +89,9 @@ if settings.COHERE_API_KEY and "COHERE_API_KEY" not in os.environ:
 # from the environment) can see a value supplied via .env.
 if settings.GROQ_API_KEYS and "GROQ_API_KEYS" not in os.environ:
     os.environ["GROQ_API_KEYS"] = settings.GROQ_API_KEYS
+
+# Bridge fallback provider keys so nodes.py can read them via os.environ.
+if settings.GOOGLE_API_KEY and "GOOGLE_API_KEY" not in os.environ:
+    os.environ["GOOGLE_API_KEY"] = settings.GOOGLE_API_KEY
+if settings.CEREBRAS_API_KEY and "CEREBRAS_API_KEY" not in os.environ:
+    os.environ["CEREBRAS_API_KEY"] = settings.CEREBRAS_API_KEY

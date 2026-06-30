@@ -1,18 +1,73 @@
 {
-  "timestamp": "2026-06-29T23:34:04.045938+00:00",
+  "timestamp": "2026-06-30T12:06:52.294733+00:00",
+  "note": "Partial benchmark via /api/chat/stream. Index: 4 queries measured cleanly. Search: 1 query measured (latency inflated by a Groq TPM retry; true latency ~18-25s). General: not benchmarked due to Groq free-tier daily token limit (100k TPD) exhausted by prior test runs.",
   "route_stats": {
     "index": {
-      "count": 0
+      "count": 4,
+      "avg_ms": 6490,
+      "min_ms": 5660,
+      "max_ms": 7618,
+      "p50_ms": 6525,
+      "p95_ms": 7618,
+      "p99_ms": 7618
     },
     "general": {
       "count": 0
     },
     "search": {
-      "count": 0
+      "count": 1,
+      "avg_ms": 52356,
+      "min_ms": 52356,
+      "max_ms": 52356,
+      "p50_ms": 52356,
+      "p95_ms": 52356,
+      "p99_ms": 52356
     },
     "overall": {
-      "count": 0
+      "count": 5,
+      "avg_ms": 15509,
+      "min_ms": 5660,
+      "max_ms": 52356,
+      "p50_ms": 6525,
+      "p95_ms": 52356,
+      "p99_ms": 52356
     }
   },
-  "records": []
+  "records": [
+    {
+      "intended_route": "index",
+      "actual_route": "index",
+      "question": "What are the key findings or conclusions in the document?",
+      "latency_ms": 7618,
+      "server_processing_ms": 5114
+    },
+    {
+      "intended_route": "index",
+      "actual_route": "index",
+      "question": "Summarize the main methodology described.",
+      "latency_ms": 5660,
+      "server_processing_ms": 2639
+    },
+    {
+      "intended_route": "index",
+      "actual_route": "index",
+      "question": "What problem does this document address?",
+      "latency_ms": 6159,
+      "server_processing_ms": 3124
+    },
+    {
+      "intended_route": "index",
+      "actual_route": "index",
+      "question": "What technologies or tools are referenced in the document?",
+      "latency_ms": 6525,
+      "server_processing_ms": 3202
+    },
+    {
+      "intended_route": "search",
+      "actual_route": "search",
+      "question": "Who is the current CEO of OpenAI?",
+      "latency_ms": 52356,
+      "server_processing_ms": 49191
+    }
+  ]
 }

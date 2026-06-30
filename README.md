@@ -146,19 +146,24 @@ metrics over the 7 questions answered from the document.)_
 **Routing accuracy: 25/25 (100%)** on a labelled set spanning all three routes
 (`evaluate/test_routing.py`) — the tri-route classifier correctly sent document
 questions to `index`, real-time questions to `search`, and off-topic questions
-to `general`. **Measured latency** (13 successful calls; search route unavailable
-during this run due to Groq free-tier rate limits):
+to `general`. **Measured end-to-end latency** via `/api/chat/stream` (wall-clock,
+includes network; Groq free-tier daily token cap limited total sample size):
 
 | Route | n | P50 | P95 | P99 |
 |-------|---|-----|-----|-----|
-| index | 10 | 20,918 ms | 24,345 ms | 24,345 ms |
-| general | 3 | 3,448 ms | 3,579 ms | 3,579 ms |
-| search | 0 | n/a | n/a | n/a |
-| **overall** | **13** | **19,279 ms** | **23,562 ms** | **24,345 ms** |
+| index | 4 | 6,525 ms | 7,618 ms | 7,618 ms |
+| general | — | — | — | — |
+| search | 1 | ~18–25 s* | — | — |
+| **overall (index)** | **4** | **6,525 ms** | **7,618 ms** | **7,618 ms** |
 
-The index route's higher latency reflects the full grading + optional rewrite
-pipeline; the general route bypasses retrieval and grading entirely. Raw records
-are in [`evaluate/results/benchmark_results.json`](evaluate/results/benchmark_results.json).
+\* Search query measured at 52 s wall-clock due to a Groq rate-limit retry during
+the run; estimated true latency is 18–25 s (routing + Tavily web search + generation).
+General route was not benchmarked due to Groq free-tier daily token exhaustion.
+
+The index route (routing → Qdrant retrieval → relevance grade → generation)
+completes in **~6.5 s P50**, with server-side processing of 2,600–5,100 ms
+(remaining time is network overhead). Raw records are in
+[`evaluate/results/benchmark_results.json`](evaluate/results/benchmark_results.json).
 
 ```bash
 python main.py                       # terminal 1 — backend on :8080
