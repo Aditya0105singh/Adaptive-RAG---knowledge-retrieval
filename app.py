@@ -1,6 +1,7 @@
 """Adaptive RAG AI — Streamlit shell that serves the HTML/JS frontend inline."""
 import pathlib
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Adaptive RAG AI",
@@ -50,4 +51,4 @@ html_content = html_content.replace(
 )
 
 # Render the full app inside a full-viewport iframe
-st.components.v1.html(html_content, height=900, scrolling=False)
+components.html(html_content, height=900, scrolling=False)
