@@ -146,24 +146,22 @@ metrics over the 7 questions answered from the document.)_
 **Routing accuracy: 25/25 (100%)** on a labelled set spanning all three routes
 (`evaluate/test_routing.py`) — the tri-route classifier correctly sent document
 questions to `index`, real-time questions to `search`, and off-topic questions
-to `general`. **Measured end-to-end latency** via `/api/chat/stream` (wall-clock,
-includes network; Groq free-tier daily token cap limited total sample size):
+to `general`. **Measured end-to-end latency** via `/api/chat/stream` (wall-clock, includes
+network; 3 queries per route, 30 s cooldown between calls):
 
-| Route | n | P50 | P95 | P99 |
-|-------|---|-----|-----|-----|
-| index | 4 | 6,525 ms | 7,618 ms | 7,618 ms |
-| general | — | — | — | — |
-| search | 1 | ~18–25 s* | — | — |
-| **overall (index)** | **4** | **6,525 ms** | **7,618 ms** | **7,618 ms** |
+| Route | n | Avg | P50 | P95 | P99 |
+|-------|---|-----|-----|-----|-----|
+| index | 3 | 5,813 ms | 4,910 ms | 7,782 ms | 7,782 ms |
+| general | 3 | 7,737 ms | 8,376 ms | 9,052 ms | 9,052 ms |
+| search | 3 | 5,278 ms | 5,493 ms | 5,513 ms | 5,513 ms |
+| **overall** | **9** | **6,276 ms** | **5,513 ms** | **9,052 ms** | **9,052 ms** |
 
-\* Search query measured at 52 s wall-clock due to a Groq rate-limit retry during
-the run; estimated true latency is 18–25 s (routing + Tavily web search + generation).
-General route was not benchmarked due to Groq free-tier daily token exhaustion.
+- **Index** (routing → Qdrant retrieval → relevance grading → generation): ~4.9 s P50
+- **General** (routing → direct LLM): ~8.4 s P50 — higher because Cerebras fallback
+  was active during this run (Groq free-tier daily limit reached by prior test load)
+- **Search** (routing → Tavily web search → generation): ~5.5 s P50
 
-The index route (routing → Qdrant retrieval → relevance grade → generation)
-completes in **~6.5 s P50**, with server-side processing of 2,600–5,100 ms
-(remaining time is network overhead). Raw records are in
-[`evaluate/results/benchmark_results.json`](evaluate/results/benchmark_results.json).
+Raw records are in [`evaluate/results/benchmark_results.json`](evaluate/results/benchmark_results.json).
 
 ```bash
 python main.py                       # terminal 1 — backend on :8080
