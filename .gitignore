@@ -38,3 +38,9 @@ WALKTHROUGH.md
 INTERVIEW_PREP.md
 eval/
 go.py
+
+# Scratch / backup files generated during development
+*.greenbak
+*_backup.py
+tab_pipeline.txt
+update_theme.py

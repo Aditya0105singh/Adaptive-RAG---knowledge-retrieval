@@ -1,128 +1,18 @@
 {
-  "timestamp": "2026-06-29T23:05:27.704191+00:00",
+  "timestamp": "2026-06-29T23:34:04.045938+00:00",
   "route_stats": {
     "index": {
-      "count": 10,
-      "avg_ms": 18510,
-      "min_ms": 4563,
-      "max_ms": 24345,
-      "p50_ms": 20918,
-      "p95_ms": 24345,
-      "p99_ms": 24345
+      "count": 0
     },
     "general": {
-      "count": 3,
-      "avg_ms": 3470,
-      "min_ms": 3384,
-      "max_ms": 3579,
-      "p50_ms": 3448,
-      "p95_ms": 3579,
-      "p99_ms": 3579
+      "count": 0
     },
     "search": {
       "count": 0
     },
     "overall": {
-      "count": 13,
-      "avg_ms": 15039,
-      "min_ms": 3384,
-      "max_ms": 24345,
-      "p50_ms": 19279,
-      "p95_ms": 23562,
-      "p99_ms": 24345
+      "count": 0
     }
   },
-  "records": [
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What are the key findings or conclusions?",
-      "latency_ms": 4563,
-      "server_processing_ms": 2175
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "search",
-      "question": "Summarize the methodology section",
-      "latency_ms": 12939,
-      "server_processing_ms": 10525
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What problem does this document address?",
-      "latency_ms": 24345,
-      "server_processing_ms": 21613
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What technologies or tools are referenced?",
-      "latency_ms": 23562,
-      "server_processing_ms": 20804
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What are the limitations mentioned?",
-      "latency_ms": 20918,
-      "server_processing_ms": 18198
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What future work is suggested?",
-      "latency_ms": 12953,
-      "server_processing_ms": 10552
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What are the main contributions?",
-      "latency_ms": 21408,
-      "server_processing_ms": 18672
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What does the document say about evaluation criteria?",
-      "latency_ms": 19279,
-      "server_processing_ms": 16572
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What are the main components or sections?",
-      "latency_ms": 22416,
-      "server_processing_ms": 19680
-    },
-    {
-      "intended_route": "index",
-      "actual_route": "index",
-      "question": "What is the overall conclusion?",
-      "latency_ms": 22722,
-      "server_processing_ms": 19964
-    },
-    {
-      "intended_route": "general",
-      "actual_route": "general",
-      "question": "What is machine learning?",
-      "latency_ms": 3579,
-      "server_processing_ms": 1013
-    },
-    {
-      "intended_route": "general",
-      "actual_route": "general",
-      "question": "Explain neural networks in simple terms",
-      "latency_ms": 3448,
-      "server_processing_ms": 1240
-    },
-    {
-      "intended_route": "general",
-      "actual_route": "general",
-      "question": "What is the difference between a list and a tuple in Python?",
-      "latency_ms": 3384,
-      "server_processing_ms": 1168
-    }
-  ]
+  "records": []
 }
