@@ -72,6 +72,46 @@ let uploadedFileName = "";
 let lastMetadata = null;
 let benchmarksLoaded = false;
 
+// --- Session Stats (Feature 3) ---
+const _sessionStats = { total: 0, routes: { index: 0, search: 0, general: 0 }, trustScores: [], rewrites: 0, ungrounded: 0 };
+
+function _updateSessionStats(metadata) {
+    if (!metadata) return;
+    _sessionStats.total++;
+    const r = metadata.route_taken || 'general';
+    if (_sessionStats.routes[r] !== undefined) _sessionStats.routes[r]++;
+    if (metadata.loops_executed > 0) _sessionStats.rewrites += metadata.loops_executed;
+    if (metadata.grounding?.trust_score !== undefined) _sessionStats.trustScores.push(metadata.grounding.trust_score);
+    if (metadata.grounding?.summary?.ungrounded_count) _sessionStats.ungrounded += metadata.grounding.summary.ungrounded_count;
+    _renderSessionStats();
+}
+
+function _renderSessionStats() {
+    const bar = document.getElementById('session-stats-bar');
+    if (!bar) return;
+    if (_sessionStats.total < 2) return; // show after 2nd question
+    const avgTrust = _sessionStats.trustScores.length
+        ? Math.round(_sessionStats.trustScores.reduce((a,b)=>a+b,0) / _sessionStats.trustScores.length)
+        : null;
+    const routeParts = ['index','search','general']
+        .filter(r => _sessionStats.routes[r] > 0)
+        .map(r => {
+            const colors = { index:'#0F766E', search:'#1D4ED8', general:'#475569' };
+            return `<span style="color:${colors[r]};font-weight:700;">${_sessionStats.routes[r]} ${r.toUpperCase()}</span>`;
+        }).join(' · ');
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+        <i class="ph-fill ph-chart-bar" style="color:var(--primary);font-size:13px;"></i>
+        <span style="color:var(--text-muted);">Session:</span>
+        <strong>${_sessionStats.total} queries</strong>
+        <span style="color:var(--border);">|</span>
+        ${routeParts}
+        ${_sessionStats.rewrites ? `<span style="color:var(--border);">|</span><span style="color:#8B5CF6;font-weight:600;">${_sessionStats.rewrites} rewrite${_sessionStats.rewrites>1?'s':''}</span>` : ''}
+        ${avgTrust !== null ? `<span style="color:var(--border);">|</span><span style="color:${avgTrust>=70?'#059669':'#D97706'};font-weight:600;">Avg trust ${avgTrust}%</span>` : ''}
+        ${_sessionStats.ungrounded ? `<span style="color:var(--border);">|</span><span style="color:#DC2626;font-weight:600;">${_sessionStats.ungrounded} ungrounded</span>` : ''}
+    `;
+}
+
 // --- Toast Notification System ---
 function showToast(message, type = 'info', duration = 4000) {
     const toast = document.createElement('div');
@@ -1007,18 +1047,58 @@ document.addEventListener('DOMContentLoaded', () => {
                             const evt = JSON.parse(dataStr);
 
                             if (evt.type === 'stage') {
-                                const stageMap = {
-                                    routing:      ['<i class="ph ph-map-pin" style="color:#F59E0B;font-size:14px;"></i>', 'Routing'],
-                                    routed:       ['<i class="ph-fill ph-map-pin" style="color:#F59E0B;font-size:14px;"></i>', `Route → ${(evt.route||'').toUpperCase()}`],
-                                    retrieving:   ['<i class="ph ph-magnifying-glass" style="color:#3B82F6;font-size:14px;"></i>', 'Retrieving'],
-                                    retrieved:    ['<i class="ph-fill ph-check-circle" style="color:#10B981;font-size:14px;"></i>', 'Chunks graded'],
-                                    rewriting:    ['<i class="ph ph-pencil-simple" style="color:#8B5CF6;font-size:14px;"></i>', 'Query rewrite'],
-                                    searching_web:['<i class="ph ph-globe" style="color:#3B82F6;font-size:14px;"></i>', 'Web search'],
-                                    generating:   ['<i class="ph ph-magic-wand" style="color:#F59E0B;font-size:14px;"></i>', 'Generating'],
-                                    done:         ['<i class="ph-fill ph-check" style="color:#10B981;font-size:14px;"></i>', 'Done'],
-                                };
-                                const [icon, title] = stageMap[evt.stage] || ['•', evt.stage];
-                                addPipelineStep(ac.pipelineTrace, icon, title, evt.message || '');
+                                // --- Feature 1: Route Decision Card ---
+                                if (evt.stage === 'routed' && evt.route) {
+                                    const routeColors = { index: '#0F766E', search: '#1D4ED8', general: '#475569' };
+                                    const routeBg    = { index: '#CCFBF1', search: '#DBEAFE', general: '#F1F5F9' };
+                                    const routeIcons = { index: 'ph-file-text', search: 'ph-globe', general: 'ph-brain' };
+                                    const r = evt.route;
+                                    const card = document.createElement('div');
+                                    card.style.cssText = `margin:10px 0; padding:10px 14px; border-radius:10px; background:${routeBg[r]||'#F1F5F9'}; border-left:3px solid ${routeColors[r]||'#64748B'};`;
+                                    card.innerHTML = `
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                          <i class="ph-fill ${routeIcons[r]||'ph-map-pin'}" style="color:${routeColors[r]||'#64748B'}; font-size:15px;"></i>
+                                          <span style="font-weight:700; font-size:13px; color:${routeColors[r]||'#64748B'};">Routed → ${r.toUpperCase()}</span>
+                                        </div>
+                                        <div style="font-size:11px; color:#475569; line-height:1.4;">${escHtml(evt.reason||evt.message||'')}</div>`;
+                                    ac.pipelineTrace.appendChild(card);
+                                }
+
+                                // --- Feature 2: Query Rewrite Visualizer ---
+                                else if (evt.stage === 'rewriting') {
+                                    const scores = evt.scores_before_rewrite || [];
+                                    const best = scores.length ? Math.max(...scores) : null;
+                                    const card = document.createElement('div');
+                                    card.style.cssText = 'margin:10px 0; padding:12px 14px; border-radius:10px; background:#F5F3FF; border-left:3px solid #8B5CF6;';
+                                    card.innerHTML = `
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                          <i class="ph ph-arrows-clockwise" style="color:#8B5CF6; font-size:15px;"></i>
+                                          <span style="font-weight:700; font-size:12px; color:#6D28D9;">Query Rewrite Loop ${evt.loop||1}</span>
+                                          ${best !== null ? `<span style="margin-left:auto; font-size:11px; font-family:monospace; color:#DC2626; background:#FEE2E2; padding:2px 7px; border-radius:4px;">Best score: ${(best*100).toFixed(0)}% — below threshold</span>` : ''}
+                                        </div>
+                                        ${evt.original_question ? `
+                                        <div style="font-size:11px; color:#64748B; margin-bottom:5px;">
+                                          <span style="font-weight:600; color:#6D28D9;">Original:</span> <span style="font-style:italic;">"${escHtml(evt.original_question)}"</span>
+                                        </div>
+                                        <div style="font-size:11px; color:#64748B; display:flex; align-items:flex-start; gap:6px;">
+                                          <i class="ph ph-arrow-bend-down-right" style="color:#8B5CF6; flex-shrink:0; margin-top:1px;"></i>
+                                          <span><span style="font-weight:600; color:#059669;">Rewritten:</span> <span style="font-style:italic;">"${escHtml(evt.rewritten_question||'')}"</span></span>
+                                        </div>` : `<div style="font-size:11px; color:#6D28D9;">${escHtml(evt.message||'')}</div>`}`;
+                                    ac.pipelineTrace.appendChild(card);
+                                }
+
+                                else {
+                                    const stageMap = {
+                                        routing:      ['<i class="ph ph-map-pin" style="color:#F59E0B;font-size:14px;"></i>', 'Routing'],
+                                        retrieving:   ['<i class="ph ph-magnifying-glass" style="color:#3B82F6;font-size:14px;"></i>', 'Retrieving'],
+                                        retrieved:    ['<i class="ph-fill ph-check-circle" style="color:#10B981;font-size:14px;"></i>', 'Chunks graded'],
+                                        searching_web:['<i class="ph ph-globe" style="color:#3B82F6;font-size:14px;"></i>', 'Web search'],
+                                        generating:   ['<i class="ph ph-magic-wand" style="color:#F59E0B;font-size:14px;"></i>', 'Generating'],
+                                        done:         ['<i class="ph-fill ph-check" style="color:#10B981;font-size:14px;"></i>', 'Done'],
+                                    };
+                                    const [icon, title] = stageMap[evt.stage] || ['•', evt.stage];
+                                    addPipelineStep(ac.pipelineTrace, icon, title, evt.message || '');
+                                }
                             }
                             else if (evt.type === 'token') {
                                 answer += evt.content || '';
@@ -1047,6 +1127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 updateSessionCost();
                                 updatePipelineInspector(lastMetadata);
                                 fetchGroundingComparison(ac, lastMetadata);
+                                _updateSessionStats(lastMetadata);
                             }
                             else if (evt.type === 'error') {
                                 const errDiv = document.createElement('div');

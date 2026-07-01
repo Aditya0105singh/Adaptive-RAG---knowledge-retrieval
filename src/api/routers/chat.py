@@ -202,6 +202,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
         graph_done = False
         stream_error = None
         last_heartbeat = time.time()
+        prev_question = initial_state["question"]   # tracks question before each rewrite
 
         while not graph_done:
             # Drain all immediately available tokens first.
@@ -232,7 +233,15 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
 
             elif evt_type == "update":
                 if node_name == "route_question":
+                    doc_avail = snap.get("doc_available", False)
+                    if route == "index":
+                        reason = "Document uploaded · question is document-specific"
+                    elif route == "search":
+                        reason = "Requires current or real-time information"
+                    else:
+                        reason = "General knowledge · no document or live data needed"
                     yield _sse({"type": "stage", "stage": "routed", "route": route,
+                                "reason": reason, "doc_available": doc_avail,
                                 "message": f"Route decided: {route}"})
                     if route == "general":
                         yield _sse({"type": "stage", "stage": "generating", "route": route,
@@ -260,9 +269,15 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
                                     "message": "Generating your answer..."})
 
                 elif node_name == "transform_query":
+                    rewritten_q = snap.get("question", "")
+                    scores_before = snap.get("relevance_scores") or []
                     yield _sse({"type": "stage", "stage": "rewriting", "route": route,
                                 "loop": loop + 1,
+                                "original_question": prev_question,
+                                "rewritten_question": rewritten_q,
+                                "scores_before_rewrite": scores_before,
                                 "message": "Rewriting query for better retrieval..."})
+                    prev_question = rewritten_q
 
                 elif node_name == "do_web_search":
                     # Detect fallback: relevance_scores is non-empty → came via retrieval
