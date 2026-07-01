@@ -118,8 +118,10 @@
   /* Context Sidebar */
   .sidebar {
     width: 280px;
-    background: var(--bg-sidebar-light);
-    border-right: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(15, 23, 42, 0.06);
     display: flex;
     flex-direction: column;
     padding: 24px;
@@ -159,14 +161,15 @@
   }
 
   .mode-card {
-    background: #F8FAFC;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 10px;
     padding: 12px;
     display: flex;
     align-items: center;
     gap: 12px;
     margin-bottom: 32px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
   }
   
   .mode-icon {
@@ -187,12 +190,13 @@
   }
 
   .dropzone {
-    border: 1.5px dashed var(--border);
-    border-radius: 8px;
+    border: 1.5px dashed rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
     padding: 24px 16px;
     text-align: center;
-    background: #FAFAFA;
+    background: rgba(255, 255, 255, 0.25);
     margin-bottom: 8px;
+    transition: all 0.2s;
   }
   
   .dropzone-icon {
@@ -237,7 +241,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(15, 23, 42, 0.05);
     border-radius: 8px;
     margin-bottom: 8px;
     font-size: 13px;
@@ -265,8 +270,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px;
-    background: #FAFAFA;
-    border: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid rgba(15, 23, 42, 0.04);
     border-radius: 8px;
     font-size: 13px;
   }
@@ -322,7 +327,7 @@
   .content {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 32px 8px;
+    padding: 24px 32px 240px;
     min-height: 0;
   }
 
@@ -885,41 +890,48 @@
 
   /* Chat Input Area */
   .chat-area {
-    flex-shrink: 0;
-    padding: 0 32px 20px;
-    background: transparent;
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 16px;
-    position: relative;
-  }
-  /* gradient fade rising up behind the chat area */
-  .chat-area::before {
-    content: '';
     position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 160px;
-    background: linear-gradient(to bottom, rgba(244,247,249,0) 0%, rgba(244,247,249,0.85) 50%, rgba(244,247,249,0.98) 100%);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 48px 32px 24px;
+    background: linear-gradient(to top, 
+      #F4F7F9 0%, 
+      rgba(244, 247, 249, 0.95) 40%, 
+      rgba(244, 247, 249, 0) 100%
+    );
     pointer-events: none;
-    z-index: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
   }
   
   .chat-input-wrapper {
     width: 100%;
-    max-width: 760px;
-    background: white;
-    border: 1.5px solid #E2E8F0;
+    max-width: 700px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 20px;
-    padding: 14px 8px 14px 20px;
+    padding: 8px 12px 8px 18px;
     display: flex;
-    align-items: center;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-    transition: border-color 0.15s, box-shadow 0.15s;
+    align-items: flex-end;
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.01),
+      0 4px 16px rgba(15, 23, 42, 0.04),
+      0 12px 32px rgba(15, 23, 42, 0.03);
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    pointer-events: auto;
   }
   .chat-input-wrapper:focus-within {
-    border-color: #0D9488;
-    box-shadow: 0 0 0 4px rgba(13,148,136,0.1), 0 4px 24px rgba(0,0,0,0.10);
+    border-color: rgba(13, 148, 136, 0.3);
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 
+      0 0 0 3px rgba(13, 148, 136, 0.08),
+      0 12px 32px rgba(15, 23, 42, 0.06);
   }
   
   .chat-input {
@@ -927,62 +939,93 @@
     border: none;
     outline: none;
     font-size: 14px;
+    line-height: 1.5;
     color: var(--text-main);
     font-family: inherit;
-    padding: 0 8px;
+    padding: 4px 8px 4px 0;
+    resize: none;
+    background: transparent;
+    height: 24px;
+    max-height: 160px;
+    overflow-y: auto;
+    transition: height 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   
   .chat-input::placeholder {
     color: #94A3B8;
   }
   
+  .chat-input::-webkit-scrollbar {
+    width: 4px;
+  }
+  .chat-input::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+  
   .chat-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    padding-bottom: 2px;
   }
   
   .btn-icon {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: transparent;
-    border-radius: 50%;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
+    transition: background 0.15s, color 0.15s;
   }
   
   .btn-icon:hover {
-    background: #F1F5F9;
+    background: rgba(15, 23, 42, 0.05);
+    color: var(--text-main);
   }
   
   .btn-send {
-    background: #0A1628;
+    background: var(--primary);
     color: white;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 14px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    flex-shrink: 0;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition: transform 0.15s, background-color 0.15s, opacity 0.15s;
   }
   .btn-send:hover:not(:disabled) {
-    transform: scale(1.06);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    background: #0F766E;
+    transform: scale(1.04);
   }
-  .btn-send:disabled, .chat-input:disabled {
-    opacity: 0.5;
+  .btn-send:disabled {
+    background: rgba(15, 23, 42, 0.08) !important;
+    color: rgba(15, 23, 42, 0.3);
     cursor: not-allowed;
+    transform: none !important;
+  }
+  .btn-send.generating {
+    background: #EF4444 !important;
+    color: white !important;
+    animation: pulse-stop 2s infinite;
+  }
+  .btn-send.generating:hover {
+    background: #DC2626 !important;
+  }
+  @keyframes pulse-stop {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
   }
 
   @keyframes spin {
@@ -1013,36 +1056,62 @@
 
   /* Floating suggestion pills */
   .prompt-chip {
-    background: white;
-    border: 1px solid #E8EDF2;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 99px;
-    padding: 9px 16px 9px 10px;
-    font-size: 13px;
+    padding: 6px 12px;
+    font-size: 12px;
     font-weight: 500;
-    color: #1E293B;
+    color: #334155;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    transition: all 0.18s;
+    gap: 6px;
+    transition: all 0.2s;
     font-family: inherit;
     white-space: nowrap;
-    box-shadow: 0 1px 8px rgba(0,0,0,0.08);
-    width: fit-content;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
   }
   .prompt-chip:hover {
-    border-color: #0D9488;
-    background: #F0FDF9;
-    box-shadow: 0 3px 14px rgba(13,148,136,0.18);
+    border-color: rgba(13, 148, 136, 0.25);
+    background: rgba(240, 253, 250, 0.8);
+    color: #0D9488;
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13,148,136,0.06);
   }
   .prompt-chip .chip-icon {
-    width: 26px; height: 26px; border-radius: 50%;
+    width: 20px; height: 20px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 13px; color: #0D9488;
-    background: #F0FDF9;
+    flex-shrink: 0; font-size: 11px; color: #0D9488;
+    background: rgba(13, 148, 136, 0.1);
   }
   .prompt-chip .chip-label { display: none; }
+
+  #suggested-prompts {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 700px !important;
+    width: 100% !important;
+    margin-bottom: 4px !important;
+    padding: 0 !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+    align-items: center !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .prompts-fade-out {
+    opacity: 0 !important;
+    transform: translateY(12px) !important;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
 
   .file-chip {
     display: flex;
@@ -1207,20 +1276,21 @@
             <div class="hero-icon"><i class="ph ph-atom"></i></div>
             <div class="hero-title-group">
               <div class="hero-title">Adaptive <span>RAG AI</span> <i class="ph ph-link" style="color:var(--text-muted); font-size:20px; margin-left:4px;"></i></div>
-              <div class="hero-subtitle">Powered by Groq · LLaMA 3.3 · Qdrant</div>
+              <div class="hero-subtitle">by Aditya Singh · Groq · LLaMA 3.3 · Qdrant · LangGraph</div>
             </div>
           </div>
-          
+
           <div class="hero-desc">
-            Ask anything about your documents — grounded answers, real sources, every claim checked against what you uploaded.
+            Intelligent tri-route RAG — automatically decides whether your question needs <strong>document retrieval</strong>, <strong>live web search</strong>, or <strong>general AI knowledge</strong>. Every answer is grounded, scored, and verified sentence by sentence.
           </div>
-          
+
           <div class="badges">
-            <span class="badge">Groq LLaMA 3.3</span>
-            <span class="badge">Adaptive RAG</span>
+            <span class="badge">Groq LLaMA 3.3 70B</span>
+            <span class="badge">LangGraph Agentic</span>
             <span class="badge">Qdrant Vector DB</span>
-            <span class="badge">FastAPI</span>
-            <span class="badge">Multi-Document</span>
+            <span class="badge">Self-Correcting Loop</span>
+            <span class="badge">Trust Score</span>
+            <span class="badge">SSE Streaming</span>
           </div>
           
           <div class="metrics-row">
@@ -1601,12 +1671,10 @@
       padding:6px 32px; background:white; border-top:1px solid var(--border);
       font-size:12px; color:var(--text-main);"></div>
 
-    <!-- Chat Input Area: LEFT = suggestion pills, RIGHT = input card -->
+    <!-- Chat Input Area -->
     <div class="chat-area">
-      <!-- LEFT: vertical suggestion pills -->
-      <div id="suggested-prompts" style="
-          position:relative; z-index:1;
-          flex:1; display:flex; flex-direction:column; gap:8px; padding-bottom:4px;">
+      <!-- Suggested prompts placed horizontally above input -->
+      <div id="suggested-prompts">
         <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?">
           <span class="chip-icon"><i class="ph ph-atom"></i></span>What is Adaptive RAG?
         </button>
@@ -1620,14 +1688,12 @@
           <span class="chip-icon"><i class="ph ph-chart-bar"></i></span>Show benchmark results
         </button>
       </div>
-      <!-- RIGHT: floating chat input card -->
-      <div style="position:relative; z-index:1; flex:1;">
-        <div class="chat-input-wrapper">
-          <input type="text" class="chat-input" placeholder="Ask anything about your doc...">
-          <div class="chat-actions">
-            <button class="btn-icon"><i class="ph ph-plus"></i></button>
-            <button class="btn-send"><i class="ph-fill ph-paper-plane-right"></i></button>
-          </div>
+      <!-- Center-aligned slim glassmorphic input dock -->
+      <div class="chat-input-wrapper">
+        <textarea class="chat-input" placeholder="Ask anything about your doc..." rows="1"></textarea>
+        <div class="chat-actions">
+          <button class="btn-icon" title="Upload document"><i class="ph ph-plus"></i></button>
+          <button class="btn-send" title="Send message"><i class="ph-fill ph-paper-plane-right"></i></button>
         </div>
       </div>
     </div>
