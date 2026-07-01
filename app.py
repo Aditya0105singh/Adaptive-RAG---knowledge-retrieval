@@ -50,5 +50,26 @@ html_content = html_content.replace(
     "const API_BASE = 'https://adaptive-rag-knowledge-retrieval.onrender.com';"
 )
 
-# Render the full app inside a full-viewport iframe
-components.html(html_content, height=900, scrolling=False)
+# Inject auto-resize script: sends iframe's scroll height to Streamlit parent
+# so the iframe grows to fit content and the chat input is never clipped.
+resize_script = """
+<script>
+(function() {
+  function sendHeight() {
+    const h = Math.max(document.documentElement.scrollHeight, window.innerHeight, 900);
+    window.parent.postMessage({ isStreamlitMessage: true, type: 'streamlit:setFrameHeight', height: h }, '*');
+  }
+  // Fire on load, on every DOM mutation (new answer cards), and on resize
+  window.addEventListener('load', sendHeight);
+  window.addEventListener('resize', sendHeight);
+  new MutationObserver(sendHeight).observe(document.body, { childList: true, subtree: true });
+  // Also fix body so it can grow past 100vh when content is long
+  document.documentElement.style.height = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.overflow = 'visible';
+})();
+</script>
+"""
+html_content = html_content.replace('</body>', resize_script + '</body>')
+
+components.html(html_content, height=900, scrolling=True)
