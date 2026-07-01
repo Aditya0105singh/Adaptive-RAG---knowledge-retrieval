@@ -1,11 +1,18 @@
 """Adaptive RAG AI — Streamlit shell that serves the HTML/JS frontend inline."""
 import pathlib
+from PIL import Image
 import streamlit as st
 import streamlit.components.v1 as components
 
+_here = pathlib.Path(__file__).parent
+try:
+    favicon_img = Image.open(_here / "favicon.png")
+except Exception:
+    favicon_img = "🟢"
+
 st.set_page_config(
     page_title="Adaptive RAG AI",
-    page_icon="🟢",
+    page_icon=favicon_img,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
