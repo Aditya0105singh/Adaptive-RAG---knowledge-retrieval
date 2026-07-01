@@ -1,5 +1,5 @@
 // --- Sample document for demo ---
-const DEMO_DOC_TEXT = `Adaptive RAG System — Complete Technical Research Report
+const DEMO_DOC_TEXT = `Adaptive RAG System: Complete Technical Research Report
 =========================================================
 
 ABSTRACT
@@ -19,19 +19,19 @@ The system was built as a research project demonstrating that adaptive routing s
 improves faithfulness, context precision, and answer relevancy over naive RAG approaches.
 
 KEY FINDINGS & PERFORMANCE METRICS
-Faithfulness Score: 0.816 — evaluated using the RAGAS framework, representing a 7.5% improvement
-over the naive RAG baseline score of 0.759. Faithfulness measures how well the generated answer
+Faithfulness Score: 0.816 (evaluated using the RAGAS framework, representing a 7.5% improvement
+over the naive RAG baseline score of 0.759). Faithfulness measures how well the generated answer
 is supported by the retrieved context, with higher scores indicating fewer hallucinations.
 
-Context Precision: 1.000 — a perfect score indicating that every retrieved chunk was relevant
-to the query. This improved from the naive baseline of 0.834, a gain of 19.9%. Perfect context
+Context Precision: 1.000 (a perfect score indicating that every retrieved chunk was relevant
+to the query). This improved from the naive baseline of 0.834, a gain of 19.9%. Perfect context
 precision means the system never wastes tokens on irrelevant retrieved content.
 
-Routing Accuracy: 100% — all 25 hand-labeled test cases were correctly classified into the
-appropriate route (INDEX, SEARCH, or GENERAL). The router uses LLaMA 3.1 8B Instant with a
+Routing Accuracy: 100% (all 25 hand-labeled test cases were correctly classified into the
+appropriate route: INDEX, SEARCH, or GENERAL). The router uses LLaMA 3.1 8B Instant with a
 structured prompt that considers document availability, query intent, and temporal requirements.
 
-Answer Relevancy: 0.923 — measures how directly the generated answer addresses the question.
+Answer Relevancy: 0.923 (measures how directly the generated answer addresses the question).
 Improved from the naive baseline of 0.891, a gain of 3.6%.
 
 Latency Benchmarks (9 queries, 3 per route):
@@ -107,8 +107,8 @@ Naive RAG always retrieves from the document index regardless of query type. For
 knowledge questions (e.g., "What is machine learning?"), naive RAG retrieves irrelevant
 chunks and generates hallucinated answers citing those chunks. For current events questions
 (e.g., "Who is the current OpenAI CEO?"), naive RAG either retrieves stale document content
-or produces outdated answers. Adaptive RAG routes these queries correctly — to GENERAL
-(using LLM knowledge) and SEARCH (using Tavily web search) respectively — producing accurate,
+or produces outdated answers. Adaptive RAG routes these queries correctly (to GENERAL
+using LLM knowledge, and SEARCH using Tavily web search, respectively) to produce accurate,
 well-grounded answers without wasting document retrieval on inappropriate queries.
 
 FUTURE WORK
@@ -315,7 +315,7 @@ async function checkSystemHealth() {
             const card = document.getElementById(`svc-${svc}`);
             if (!card) return;
             card.querySelector('.svc-dot').style.background = '#EF4444';
-            card.querySelector('.svc-status').innerText = 'Error — cannot reach backend';
+            card.querySelector('.svc-status').innerText = 'Error: cannot reach backend';
         });
     }
 }
@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           </div>
                         </div>
                         <div style="margin-top:7px; font-size:10px; color:#6B7280; text-align:center;">
-                          Ready — try a suggested question below
+                          Ready: try a suggested question below
                         </div>`;
 
                     // Inject doc-specific pills into the LEFT column
@@ -604,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="prompt-chip" data-prompt="How does the grounding verification work and how is the Trust Score calculated?">
                               <span class="chip-icon"><i class="ph ph-shield-check"></i></span>Grounding & Trust Score
                             </button>
-                            <button class="prompt-chip" data-prompt="Compare Adaptive RAG vs Naive RAG — what specific improvements were achieved?">
+                            <button class="prompt-chip" data-prompt="Compare Adaptive RAG vs Naive RAG: what specific improvements were achieved?">
                               <span class="chip-icon"><i class="ph ph-arrows-left-right"></i></span>Adaptive vs Naive RAG
                             </button>
                             <button class="prompt-chip" data-prompt="Who is the current CEO of OpenAI and what are their recent AI announcements?">
@@ -1013,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <summary>
                         <i class="ph ph-lightbulb" style="font-size:16px;"></i>
                         ${gaps.length} knowledge gap${gaps.length > 1 ? 's' : ''} found
-                        <span style="font-weight:400; margin-left:4px;">— click to see what's missing</span>
+                        <span style="font-weight:400; margin-left:4px;">(click to see what's missing)</span>
                         <i class="ph ph-caret-down" style="margin-left:auto; font-size:13px;"></i>
                     </summary>
                     <div class="gap-card-body">
@@ -1081,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const embMs = data.embedding_latency_ms || 0;
 
             ac.comparisonSection.innerHTML = `
-                <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px;">Method Comparison — LLM Judge vs Embedding Cosine</div>
+                <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px;">Method Comparison: LLM Judge vs Embedding Cosine</div>
                 <table class="comparison-table">
                     <thead>
                         <tr>
@@ -1260,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                                           <i class="ph ph-arrows-clockwise" style="color:#8B5CF6; font-size:15px;"></i>
                                           <span style="font-weight:700; font-size:12px; color:#6D28D9;">Query Rewrite Loop ${evt.loop||1}</span>
-                                          ${best !== null ? `<span style="margin-left:auto; font-size:11px; font-family:monospace; color:#DC2626; background:#FEE2E2; padding:2px 7px; border-radius:4px;">Best score: ${(best*100).toFixed(0)}% — below threshold</span>` : ''}
+                                          ${best !== null ? `<span style="margin-left:auto; font-size:11px; font-family:monospace; color:#DC2626; background:#FEE2E2; padding:2px 7px; border-radius:4px;">Best score: ${(best*100).toFixed(0)}% (below threshold)</span>` : ''}
                                         </div>
                                         ${evt.original_question ? `
                                         <div style="font-size:11px; color:#64748B; margin-bottom:5px;">
