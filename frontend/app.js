@@ -672,24 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3-level progressive disclosure answer card ---
     function createAnswerCard(query) {
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'margin-bottom:24px; position:relative;';
-
-        // NEW badge on wrapper — no overflow:hidden here so it's never clipped
-        const newBadge = document.createElement('div');
-        newBadge.className = 'ai-new-dot';
-        newBadge.title = 'New AI response — click to dismiss';
-        newBadge.style.cssText = `
-            display:none; position:absolute; top:-10px; right:6px; z-index:100;
-            align-items:center; gap:5px; pointer-events:none;`;
-        newBadge.innerHTML = `
-            <span style="width:12px;height:12px;border-radius:50%;background:#10B981;
-              box-shadow:0 0 0 0 rgba(16,185,129,0.6);
-              animation:ai-dot-pulse 1.2s ease-in-out infinite;
-              display:inline-block;flex-shrink:0;"></span>
-            <span style="background:#10B981;color:white;font-size:10px;font-weight:800;
-              padding:2px 8px;border-radius:99px;letter-spacing:0.05em;
-              box-shadow:0 2px 8px rgba(16,185,129,0.4);">NEW</span>`;
-        wrapper.appendChild(newBadge);
+        wrapper.style.marginBottom = '24px';
 
         const card = document.createElement('div');
         card.className = 'card response-card';
@@ -722,6 +705,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <summary class="reasoning-summary">
                     <i class="ph ph-caret-right" style="font-size:12px; transition:transform 0.2s;" class="caret-icon"></i>
                     View AI reasoning
+                    <span class="ai-new-dot" style="display:none; align-items:center; gap:4px; margin-left:6px;">
+                      <span style="width:8px;height:8px;border-radius:50%;background:#10B981;
+                        animation:ai-dot-pulse 1.2s ease-in-out infinite;display:inline-block;"></span>
+                      <span style="font-size:10px;font-weight:700;color:#10B981;">NEW</span>
+                    </span>
                 </summary>
                 <div class="reasoning-content" style="padding-top:8px;">
 
@@ -816,11 +804,14 @@ document.addEventListener('DOMContentLoaded', () => {
             gapCard: gapCard,
         };
 
-        // Hide NEW badge when user clicks anywhere on the card or wrapper
-        card.addEventListener('click', () => {
-            const dot = wrapper.querySelector('.ai-new-dot');
-            if (dot) dot.style.display = 'none';
-        }, { once: false });
+        // Hide dot when user clicks "View AI reasoning" (they opened it)
+        const reasoningSummary = card.querySelector('.reasoning-summary');
+        if (reasoningSummary) {
+            reasoningSummary.addEventListener('click', () => {
+                const dot = card.querySelector('.ai-new-dot');
+                if (dot) dot.style.display = 'none';
+            });
+        }
     }
 
     // Kept for Pipeline Inspector "How it works" static example
@@ -1268,10 +1259,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 updatePipelineInspector(lastMetadata);
                                 fetchGroundingComparison(ac, lastMetadata);
                                 _updateSessionStats(lastMetadata);
-                                // Show blinking NEW badge on wrapper (not card — card has overflow:hidden)
-                                const dot = ac.element && ac.element.querySelector('.ai-new-dot');
+                                // Show blinking dot next to "View AI reasoning"
+                                const dot = ac.card && ac.card.querySelector('.ai-new-dot');
                                 if (dot) {
-                                    dot.style.display = 'flex';
+                                    dot.style.display = 'inline-flex';
                                     setTimeout(() => { dot.style.display = 'none'; }, 8000);
                                 }
                             }
