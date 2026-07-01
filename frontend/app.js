@@ -418,9 +418,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const defaultGrid = document.querySelector('#tab-chat .grid-2');
             const defaultHero = document.querySelector('#tab-chat .hero-card');
             const suggestedPrompts = document.getElementById('suggested-prompts');
+            const demoGuide = document.getElementById('demo-guide-card');
             if (defaultGrid) defaultGrid.style.display = '';
             if (defaultHero) defaultHero.style.display = '';
             if (suggestedPrompts) suggestedPrompts.style.display = 'flex';
+            if (demoGuide) demoGuide.style.display = '';
 
             // Hide the button again
             newChatBtn.style.display = 'none';
@@ -931,9 +933,11 @@ DEPLOYMENT
         const defaultGrid = document.querySelector('#tab-chat .grid-2');
         const defaultHero = document.querySelector('#tab-chat .hero-card');
         const suggestedPrompts = document.getElementById('suggested-prompts');
+        const demoGuide = document.getElementById('demo-guide-card');
         if (defaultGrid) defaultGrid.style.display = 'none';
         if (defaultHero) defaultHero.style.display = 'none';
         if (suggestedPrompts) suggestedPrompts.style.display = 'none';
+        if (demoGuide) demoGuide.style.display = 'none';
 
         // Show New Chat button
         if (newChatBtn) newChatBtn.style.display = 'flex';
