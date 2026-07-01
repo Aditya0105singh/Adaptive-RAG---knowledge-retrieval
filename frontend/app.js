@@ -401,6 +401,28 @@ function switchToTab(targetId) {
     if (targetId === 'tab-benchmarks') loadBenchmarks();
 }
 
+function adjustTextAreaHeight(textarea) {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function setSendButtonState(generating) {
+    const sendBtn = document.querySelector('.btn-send');
+    if (!sendBtn) return;
+    if (generating) {
+        sendBtn.innerHTML = '<i class="ph-fill ph-square" style="font-size: 11px;"></i>';
+        sendBtn.title = 'Stop generating';
+        sendBtn.disabled = false;
+        sendBtn.classList.add('generating');
+    } else {
+        sendBtn.innerHTML = '<i class="ph-fill ph-paper-plane-right"></i>';
+        sendBtn.title = 'Send message';
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('generating');
+    }
+}
+
 // --- Main DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Adaptive RAG Dashboard Loaded. Session:", SESSION_ID);
@@ -444,6 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const prompt = chip.getAttribute('data-prompt');
             if (chatInput && prompt) {
                 chatInput.value = prompt;
+                adjustTextAreaHeight(chatInput);
                 chatInput.focus();
             }
         });
@@ -590,7 +613,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Re-attach click handlers for new cards
                         promptsEl.querySelectorAll('.prompt-chip[data-prompt]').forEach(btn => {
                             btn.addEventListener('click', () => {
-                                if (chatInput) { chatInput.value = btn.dataset.prompt; chatInput.focus(); sendMessage(); }
+                                if (chatInput) {
+                                    chatInput.value = btn.dataset.prompt;
+                                    adjustTextAreaHeight(chatInput);
+                                    chatInput.focus();
+                                    sendMessage();
+                                }
                             });
                         });
                     }
@@ -649,20 +677,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const demoGuide = document.getElementById('demo-guide-card');
             if (defaultGrid) defaultGrid.style.display = '';
             if (defaultHero) defaultHero.style.display = '';
-            if (suggestedPrompts) suggestedPrompts.style.display = 'flex';
+            if (suggestedPrompts) {
+                suggestedPrompts.classList.remove('prompts-fade-out');
+                suggestedPrompts.style.display = 'flex';
+            }
             if (demoGuide) demoGuide.style.display = '';
 
             // Hide the button again
             newChatBtn.style.display = 'none';
 
-            if (chatInput) { chatInput.value = ''; chatInput.focus(); }
+            if (chatInput) {
+                chatInput.value = '';
+                adjustTextAreaHeight(chatInput);
+                chatInput.focus();
+            }
         });
     }
 
     // --- Chat Logic & SSE Streaming ---
+    let currentAbortController = null;
     const chatInput = document.querySelector('.chat-input');
     const sendBtn = document.querySelector('.btn-send');
     const contentMax = document.querySelector('#tab-chat .content-max');
+    if (chatInput) adjustTextAreaHeight(chatInput);
 
     // --- Utility ---
     function escHtml(s) {
@@ -1091,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await new Promise(r => setTimeout(r, 600));
             if (chatInput) {
                 chatInput.value = DEMO_QUESTIONS[0];
+                adjustTextAreaHeight(chatInput);
                 sendMessage();
             }
 
@@ -1100,11 +1138,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function sendMessage() {
+        if (currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
+            setSendButtonState(false);
+            return;
+        }
+
         const text = chatInput.value.trim();
         if (!text) return;
         chatInput.value = '';
+        adjustTextAreaHeight(chatInput);
         chatInput.disabled = true;
-        if (sendBtn) sendBtn.disabled = true;
+
+        currentAbortController = new AbortController();
+        setSendButtonState(true);
 
         const ac = createAnswerCard(text);
 
@@ -1115,8 +1163,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const demoGuide = document.getElementById('demo-guide-card');
         if (defaultGrid) defaultGrid.style.display = 'none';
         if (defaultHero) defaultHero.style.display = 'none';
-        if (suggestedPrompts) suggestedPrompts.style.display = 'none';
         if (demoGuide) demoGuide.style.display = 'none';
+
+        if (suggestedPrompts) {
+            suggestedPrompts.classList.add('prompts-fade-out');
+            setTimeout(() => {
+                suggestedPrompts.style.display = 'none';
+            }, 350);
+        }
 
         // Show New Chat button
         if (newChatBtn) newChatBtn.style.display = 'flex';
@@ -1145,7 +1199,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     doc_available: uploadCount > 0,
                     doc_filename: uploadedFileName,
                     conversation_history: []
-                })
+                }),
+                signal: currentAbortController.signal
             });
 
             if (!response.ok) {
@@ -1280,15 +1335,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (err) {
-            console.error("Chat error:", err);
-            const errDiv = document.createElement('div');
-            errDiv.style.cssText = 'color:#DC2626; margin-top:10px; font-size:13px; padding:10px; background:#FEF2F2; border-radius:8px;';
-            errDiv.innerHTML = `<i class="ph-fill ph-warning"></i> Error: ${escHtml(err.message)}`;
-            ac.pipelineTrace.appendChild(errDiv);
-            showToast("Chat request failed: " + err.message, "error");
+            if (err.name === 'AbortError') {
+                const stopDiv = document.createElement('div');
+                stopDiv.style.cssText = 'color:#64748B; margin-top:10px; font-size:13px; padding:10px; background:#F1F5F9; border-radius:8px;';
+                stopDiv.innerHTML = `<i class="ph ph-hand-palm"></i> Generation stopped by user.`;
+                ac.pipelineTrace.appendChild(stopDiv);
+            } else {
+                console.error("Chat error:", err);
+                const errDiv = document.createElement('div');
+                errDiv.style.cssText = 'color:#DC2626; margin-top:10px; font-size:13px; padding:10px; background:#FEF2F2; border-radius:8px;';
+                errDiv.innerHTML = `<i class="ph-fill ph-warning"></i> Error: ${escHtml(err.message)}`;
+                ac.pipelineTrace.appendChild(errDiv);
+                showToast("Chat request failed: " + err.message, "error");
+            }
         } finally {
             chatInput.disabled = false;
-            if (sendBtn) sendBtn.disabled = false;
+            currentAbortController = null;
+            setSendButtonState(false);
             chatInput.focus();
         }
     }
@@ -1370,8 +1433,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sendBtn.addEventListener('click', sendMessage);
     }
     if (chatInput) {
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        chatInput.addEventListener('input', () => {
+            adjustTextAreaHeight(chatInput);
+        });
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
         });
     }
 

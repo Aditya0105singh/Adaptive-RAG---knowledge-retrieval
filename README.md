@@ -1,6 +1,8 @@
-# Adaptive RAG — Intelligent Document Intelligence
+# Adaptive RAG AI: Dynamic Query Routing & Retrieval System
 
-> An end-to-end Retrieval-Augmented Generation system that dynamically routes queries across document knowledge bases, live web search, and general AI reasoning — deployed as a production-grade full-stack application.
+A full-stack Retrieval-Augmented Generation (RAG) system that uses LangGraph and FastAPI to dynamically route user queries between local document index, live web search, and direct LLM reasoning. 
+
+I built this project to demonstrate a production-ready RAG architecture that solves the rigidity and latency issues of naive RAG setups. Instead of blindly executing vector searches for every input, the system checks query intent first and adapts the retrieval path accordingly.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://adaptive-rag---knowledge-retrieval-3lzqznfonuduremjxvis7x.streamlit.app)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Swagger%20UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://adaptive-rag-knowledge-retrieval.onrender.com/docs)
@@ -9,413 +11,361 @@
 
 ---
 
-## 🔗 Live Links
+## Live Links
 
-| Resource | URL |
-|---|---|
-| **Frontend — Streamlit Cloud** | https://adaptive-rag---knowledge-retrieval-3lzqznfonuduremjxvis7x.streamlit.app |
-| **Backend API — Render** | https://adaptive-rag-knowledge-retrieval.onrender.com |
-| **Interactive API Docs (Swagger)** | https://adaptive-rag-knowledge-retrieval.onrender.com/docs |
-| **Health Check** | https://adaptive-rag-knowledge-retrieval.onrender.com/health |
-
----
----
-
-## What It Does
-
-Upload any document (PDF, DOCX, TXT, MD, CSV) and ask questions in natural language. The system automatically decides the best retrieval strategy for each query:
-
-- **Document retrieval** — semantic search over your uploaded content using parent-child chunking
-- **Web search** — live Tavily search when the document does not contain the answer
-- **General reasoning** — Groq Llama 3.3 70B for knowledge questions with no document needed
-
-All responses stream token-by-token with full source attribution and a visible pipeline trace.
+*   **Frontend UI (Streamlit App Shell)**: [adaptive-rag-app.streamlit.app](https://adaptive-rag---knowledge-retrieval-3lzqznfonuduremjxvis7x.streamlit.app)
+*   **Backend API (Render Docker Container)**: [adaptive-rag-backend.onrender.com](https://adaptive-rag-knowledge-retrieval.onrender.com)
+*   **API Docs (Swagger UI)**: [adaptive-rag-backend.onrender.com/docs](https://adaptive-rag-knowledge-retrieval.onrender.com/docs)
+*   **API Health Status**: [adaptive-rag-backend.onrender.com/health](https://adaptive-rag-knowledge-retrieval.onrender.com/health)
 
 ---
 
-## Architecture
+## How it Works
+
+The backend uses **LangGraph** to model the decision flow as a state machine. When a question is submitted, the system classifies its intent and takes one of three routes:
+
+1.  **Document Index**: Queries specific to the uploaded file. Runs semantic search on Qdrant, grades retrieval relevance, and rewrites the query if the match is too weak.
+2.  **Web Search**: Triggered if no document is uploaded, if the document retrieval relevance fails the threshold, or if the user asks for real-time information (e.g. stock prices, current events). Powered by Tavily.
+3.  **General Reasoning**: Straight LLM generation for general chitchat, greetings, coding help, or math. This completely bypasses vector databases, saving latency.
+
+### System Architecture
 
 ```mermaid
 graph TD
-    UI["💻 Streamlit Frontend <br/> (Streamlit Cloud)"] -- "SSE streaming + REST" --> API["⚡ FastAPI Backend <br/> (Render Docker)"]
+    UI["Streamlit Frontend <br/> (Served inline via components.html iframe)"] -- "SSE Streaming + REST" --> API["FastAPI Backend <br/> (Render Docker Container)"]
     
-    subgraph Backend["Backend Infrastructure"]
+    subgraph Backend["FastAPI Backend System"]
         API
         
-        subgraph Graph["🧠 LangGraph StateGraph"]
-            route["Route Question"] --> ret["Retrieve / Web Search"]
-            ret --> grade["Grade"]
-            grade --> trans["Transform Query"]
-            trans --> gen["Generate Answer"]
+        subgraph Graph["LangGraph Decision Pipeline"]
+            route{"Route Question <br> (LLM Classifier)"}
+            
+            route -->|"index"| ret["Retrieve chunks from Qdrant"]
+            route -->|"search"| web["Execute Tavily Web Search"]
+            route -->|"general"| gen["Generate Answer"]
+            
+            ret --> grade{"Grade Chunk Relevance"}
+            grade -->|"Max score >= 0.6"| gen
+            grade -->|"Max score < 0.6 & loop < 2"| trans["Transform Query <br> (LLM Rewrite)"]
+            grade -->|"Max score < 0.3 (Fast Path)"| web
+            
+            trans --> ret
         end
         
-        subgraph Services["External Services"]
-            Cohere["Cohere Embed 384-dim"]
+        subgraph Infrastructure["Infrastructure & APIs"]
+            Cohere["Cohere Embed (384-dim light)"]
             Qdrant[/"Qdrant Cloud Vector DB"/]
             Groq["Groq Llama 3.3 70B LLM"]
-            Tavily["Tavily Search Web Fallback"]
-            Mongo[/"MongoDB Atlas Chat History"/]
+            Tavily["Tavily Search API"]
+            Mongo[/"MongoDB Chat History & Cost Logs"/]
         end
         
         API --> Graph
-        Graph -.-> Services
+        Graph -.-> Infrastructure
     end
 ```
 
-### Adaptive Routing Logic
+### Retrieval & Self-Correction Flow
 
 ```mermaid
 flowchart TD
-    Q["User Query"] --> R{"Route Question <br> (LLM Classifier)"}
+    Q["User Query"] --> R{"Route Question <br/> (LLM Classifier + Regex Fallbacks)"}
     
-    R -->|"Document Uploaded"| Doc{"Doc Path"}
-    Doc -->|"Yes"| Ret["Retrieve from Qdrant"]
-    Ret --> Grade{"Grade Relevance"}
-    Grade -->|"Relevant"| Gen["Generate Answer ✓"]
-    Grade -->|"Not Relevant"| Trans["Transform Query"]
-    Trans --> Web["Web Search"]
+    R -->|"index"| DocCheck{"Is Document Uploaded?"}
+    DocCheck -->|"Yes"| Ret["Retrieve Child Chunks <br/> from Qdrant"]
+    DocCheck -->|"No"| GenDirect["Bypass to General / Web Search"]
+    
+    Ret --> Grade{"Grade Relevance <br/> (Single-Batch JSON)"}
+    Grade -->|"Max Score >= 0.6"| Gen["Generate Answer <br/> (Streams via SSE)"]
+    Grade -->|"Max Score < 0.6"| CheckLoop{"Loop Count < 2?"}
+    
+    CheckLoop -->|"Yes"| CheckFastPath{"Max Score < 0.3?"}
+    CheckFastPath -->|"Yes (Fast Path)"| Web["Execute Tavily Search"]
+    CheckFastPath -->|"No"| Trans["Transform Query <br/> (LLM Rewrite)"]
+    
+    Trans --> Ret
+    CheckLoop -->|"No"| Web
     Web --> Gen
     
-    Doc -->|"No"| NoDoc["General Knowledge / Web Search"]
-    NoDoc --> Gen
+    R -->|"search"| Web
+    R -->|"general"| GenDirect
     
-    R -->|"Score below threshold"| Alert["Knowledge Gap Alert shown to user"]
+    Gen --> GroundCheck["Grounding Check <br/> (Parallel Sentence Grading)"]
+    GroundCheck --> GapAnalysis["Knowledge Gap Analysis <br/> (Missing Info Card)"]
+    GapAnalysis --> DB["Persist Turn to MongoDB <br/> (Save Stats & Cost)"]
 ```
 
 ---
 
-## Key Features
+## Core Design Choices
 
-### Document Intelligence
-- **Multi-format support** — PDF, DOCX, TXT, Markdown, CSV (up to 5 files × 50 MB)
-- **Parent-child chunking** — 1500-char parent / 400-char child for precision + context
-- **Session-scoped Qdrant collections** — each session gets its own isolated vector store
-- **Auto topic extraction** — key themes surfaced immediately after upload
-- **Suggested questions** — AI-generated starter questions from document content
-- **Document summary card** — one-paragraph overview shown in the sidebar
+### Parent-Child Chunking
+Single-size chunking forces a trade-off: small chunks match search queries precisely but lack context, while large chunks preserve context but dilute search relevance. 
+To resolve this:
+*   I split documents into **Parent Chunks** of 1,500 characters (~300 words, 200 overlap) and **Child Chunks** of 400 characters (~80 words, 50 overlap).
+*   Only the child chunks are embedded and indexed in Qdrant.
+*   Each child chunk's metadata stores the ID and full text of its parent.
+*   At query time, the system retrieves the top child matches, maps them to their parents, deduplicates the parent IDs (so multiple child hits from the same section don't clutter the prompt), and sends the unique parent chunks to the LLM.
 
-### Adaptive Retrieval
-- **Semantic search** — Cohere `embed-english-light-v3.0` (384-dim dense vectors)
-- **Relevance grading** — LLM grades retrieved chunks before answering
-- **Query transformation** — rewrites weak queries to improve retrieval on retry
-- **Web search fallback** — Tavily API for real-time information when docs fall short
-- **Configurable threshold** — `RELEVANCE_THRESHOLD=0.6` (cosine similarity)
+### Multi-Provider LLM Fallback Pool
+To handle API rate limits (which happen often when testing Llama 3.3 on Groq's free-tier 6,000 TPM limit), I built a resilient fallback sequence:
+`Groq (Key Rotation Pool) -> Gemini 2.0 Flash -> Cerebras (Gemma 31B) -> Cohere Command-R`
+*   **Mid-Stream Recovery**: If a rate limit error is raised mid-generation, the Server-Sent Events (SSE) generator catches it. It measures the character count emitted so far, sends backspace characters (`\x08`) to clean up the partial text on the client's screen, switches to the next LLM provider, and resumes streaming the response.
+*   **Custom Cerebras Adapter**: The standard LangChain OpenAI adapter triggers Pydantic schema validation conflicts across dependencies, so I wrote a custom, direct HTTP handler using raw requests and SSE yield loops.
 
-### Chat Experience
-- **SSE streaming** — token-by-token response, no waiting for full answer
-- **Pipeline transparency** — live stage indicator: routing → retrieving → grading → generating → done
-- **Source attribution** — expandable source chunks with filename labels
-- **Voice input** — Web Speech API mic button injected into Streamlit (Chrome)
-- **Copy answer** — one-click copy with visual feedback
-- **Conversation memory** — last 40 messages sent as context window history
+### Single-Batch Relevance Grading & The "Fast Path"
+Instead of sending sequential LLM calls to grade each retrieved document chunk (which adds tons of latency), the system sends a single batched prompt. It sends the query and a numbered list of all retrieved chunks, asking the LLM to return a raw JSON float array of scores (e.g. `[0.85, 0.20, 0.90]`).
+*   **Relevance Threshold**: Chunks with scores $\ge 0.6$ are kept. 
+*   **The Fast Path**: If the best chunk retrieved on the first attempt scores $< 0.3$, it usually means the document has no information on the topic. The system skips the query-rewriting loop entirely and jumps straight to Web Search, saving 1–2 seconds.
 
-### UI/UX
-- Neural network logo (pure SVG, no images)
-- Grounding Check / Answer Evolution / Knowledge Gap Alerts toggles
-- Session cost tracker (token count + estimated cost)
-- Query history sidebar
-- Friendly error messages (rate limit, timeout, connection, API key)
+### Grounding Evaluator (Ablation Comparison)
+I built two alternative grounding modes to check for hallucinations:
+1.  **LLM Grounding**: Splits the generated answer into sentences and runs parallel LLM calls (`ThreadPoolExecutor` with 6 workers) to classify each sentence as `GROUNDED` (explicitly backed by sources), `INFERRED` (logical deduction), or `UNGROUNDED` (hallucination).
+2.  **Embedding-based Grounding (Ablation)**: Runs zero LLM calls. It calculates cosine similarity between each sentence vector and the retrieved source vectors. It maps scores $\ge 0.75 \implies$ GROUNDED, $\ge 0.50 \implies$ INFERRED, and $< 0.50 \implies$ UNGROUNDED. 
+The UI exposes a `/api/grounding/compare` endpoint to compare the speed and accuracy of both approaches side-by-side.
+
+### Knowledge Gap Analyzer
+If the context isn't fully comprehensive, the LLM analyzes what is missing. It outputs a Trust Score (0-100%), up to 4 missing points, and suggests what other documents the user should upload (e.g., "Upload your resume or W2 form"). These results are cached using an MD5 hash of `Question + Digests of Retrieved Chunks` with a 600-second TTL to prevent duplicate calls.
+
+---
+
+## Frontend & UI Implementation
+
+*   **Fixed Viewport Layout**: Streamlit iframes do not support standard `position:fixed` CSS properties cleanly. I bypassed this by writing a custom Flexbox column layout where the chat input wrapper is pinned to the bottom. An iframe-side `MutationObserver` listens for new message cards and triggers `postMessage('streamlit:setFrameHeight')` to resize the viewport container dynamically.
+*   **Voice Input**: Integrated browser-native SpeechRecognition (`WebSpeechAPI`). I injected a raw value setter into the React DOM prototype of the Streamlit text area to ensure text injected by voice input triggers React's state handlers.
+*   **Session Stats & Costs**: Added a live sidebar dashboard that aggregates total session queries, route counts, average response latency, and calculates the exact cost in USD based on actual token usage counts and model pricing tables.
 
 ---
 
 ## Benchmarks & Evaluation
 
-The system is quantitatively evaluated against a **Naive RAG baseline** (always
-retrieve, no grading, no routing, single shot) on the same document, the same
-test set, and the same Cohere embeddings — so the only variable is the adaptive
-control flow. Answer quality is scored with the industry-standard
-**[RAGAS](https://docs.ragas.io)** framework (judged by `llama-3.1-8b-instant`
-to stay within free-tier token limits).
+I evaluated this adaptive pipeline against a **Naive RAG baseline** (which always retrieves, runs no grading, and uses single-shot generation) on the same document set and evaluation queries. Performance was measured using the **[RAGAS](https://docs.ragas.io)** framework, judged by `llama-3.1-8b-instant`.
 
-RAGAS scores are reference-free and judged by `llama-3.1-8b-instant`. Full
-output is in [`evaluate/results/comparison_report.md`](evaluate/results/comparison_report.md).
+### RAGAS Evaluation Results
 
-| Metric | Naive RAG | Adaptive RAG | Δ |
-|--------|-----------|--------------|---|
-| Faithfulness | 0.759 | **0.816** | **+7%** |
-| Context Precision | 0.875 | **1.000** | **+14%** |
-| Answer Relevancy | 0.528 | 0.500 | ~tied |
-| Avg Latency (ms) | 1089 | 4773 | +3.7× (grading + rewrite cost) |
+| Metric | Naive RAG | Adaptive RAG | Δ (Improvement) |
+|--------|-----------|--------------|-----------------|
+| **Faithfulness** | 0.759 | **0.816** | **+7%** |
+| **Context Precision** | 0.875 | **1.000** | **+14%** |
+| **Answer Relevancy** | 0.528 | 0.500 | ~Tied |
+| **Avg Latency (ms)** | 1089 | 4773 | +3.7× (due to routing + grading steps) |
 
-The relevance grader filters off-topic chunks before generation, so the adaptive
-system reaches **perfect context precision** and higher faithfulness; the
-trade-off is added latency from the extra grading/rewrite LLM calls. Answer
-relevancy is statistically tied. _(8-question reference-document set; adaptive
-metrics over the 7 questions answered from the document.)_
+*The relevance grader filters out off-topic text chunks before generation, leading to **perfect context precision (1.000)** and higher faithfulness. The trade-off is higher latency due to the extra LLM calls for classification and grading.*
 
-**Routing accuracy: 25/25 (100%)** on a labelled set spanning all three routes
-(`evaluate/test_routing.py`) — the tri-route classifier correctly sent document
-questions to `index`, real-time questions to `search`, and off-topic questions
-to `general`. **Measured end-to-end latency** via `/api/chat/stream` (wall-clock, includes
-network; 3 queries per route, 30 s cooldown between calls):
+### Routing Accuracy & Latency Per Route
+Tested via `evaluate/test_routing.py` (25-question labeled test set):
+*   **Routing Accuracy**: **25/25 (100%)**
+*   **Measured End-to-End Latency** (wall-clock, including network):
 
-| Route | n | Avg | P50 | P95 | P99 |
-|-------|---|-----|-----|-----|-----|
-| index | 3 | 5,813 ms | 4,910 ms | 7,782 ms | 7,782 ms |
-| general | 3 | 7,737 ms | 8,376 ms | 9,052 ms | 9,052 ms |
-| search | 3 | 5,278 ms | 5,493 ms | 5,513 ms | 5,513 ms |
-| **overall** | **9** | **6,276 ms** | **5,513 ms** | **9,052 ms** | **9,052 ms** |
-
-- **Index** (routing → Qdrant retrieval → relevance grading → generation): ~4.9 s P50
-- **General** (routing → direct LLM): ~8.4 s P50 — higher because Cerebras fallback
-  was active during this run (Groq free-tier daily limit reached by prior test load)
-- **Search** (routing → Tavily web search → generation): ~5.5 s P50
-
-Raw records are in [`evaluate/results/benchmark_results.json`](evaluate/results/benchmark_results.json).
-
-```bash
-python main.py                       # terminal 1 — backend on :8080
-python evaluate/ragas_eval.py        # RAGAS scores for the adaptive system
-python evaluate/naive_rag.py         # RAGAS scores for the naive baseline
-python evaluate/compare.py           # writes results/comparison_report.md
-python evaluate/test_routing.py      # routing accuracy
-python evaluate/benchmark_latency.py # per-route latency
-```
+| Route | sample count | Average Latency | P50 | P95 |
+|-------|---|---|---|---|
+| **Index (Document)** | 3 | 5,813 ms | 4,910 ms | 7,782 ms |
+| **General Reasoning** | 3 | 7,737 ms | 8,376 ms | 9,052 ms |
+| **Web Search** | 3 | 5,278 ms | 5,493 ms | 5,513 ms |
+| **Overall** | **9** | **6,276 ms** | **5,513 ms** | **9,052 ms** |
 
 ---
 
-## Tech Stack
+## Known Bugs Fixed
 
-### Backend
-| Layer | Technology |
-|---|---|
-| API Framework | FastAPI 0.115 + Uvicorn |
-| Agent Orchestration | LangGraph 1.2 (StateGraph + MemorySaver) |
-| LLM | Groq — Llama 3.3 70B Versatile (`max_tokens=32768`) |
-| Embeddings | Cohere `embed-english-light-v3.0` (384-dim, API-based) |
-| Vector Database | Qdrant Cloud (cosine similarity, parent-child schema) |
-| Web Search | Tavily API |
-| Chat History | MongoDB Atlas (optional) |
-| Observability | OpenTelemetry + structlog |
-| Containerisation | Docker (python:3.12-slim) |
-| Deployment | Render (free tier, auto-deploy from GitHub) |
+During development, I fixed several critical layout, token rate, and connection bugs:
 
-### Frontend
-| Layer | Technology |
-|---|---|
-| UI Framework | Streamlit |
-| Streaming | Server-Sent Events via `requests` stream reader |
-| Voice Input | Web Speech API (injected via `st.components.html`) |
-| Deployment | Streamlit Community Cloud |
+| Bug | Root Cause | Resolution |
+|-----|-----------|------------|
+| Chat input invisible on refresh | `position:fixed` behaves inconsistently inside Streamlit iframes | Rewrote UI using a pure CSS Flexbox layout |
+| Viewport clipping reasoning logs | Absolute positioning of the reasoning badge was clipped by `.card` overflow limits | Moved the reasoning status dot to render inline |
+| Cohere vector upload crashes | Ingestion service sent batches of 100 texts, exceeding Cohere's API batch limit of 96 | Reduced vector processing batch size to 90 |
+| Stream drops on Render proxy | Render's reverse proxy kills HTTP connections if idle for 30 seconds | Added a background task that yields keepalive comments (`: keepalive\n\n`) every 5 seconds |
+| Rapid API quota exhaustion | LLM execution defaulted to a `max_tokens` limit of 32,768, which filled up TPM budgets | Capped default generation tokens to 1,024 |
+| Slow routing on startup | Fast API and LangGraph loaded heavy local PyTorch dependencies | Switched to ONNX runtime (`fastembed`) and mocked PyTorch imports during execution |
 
 ---
 
-## Project Structure
+## Project Structure & File Links
 
 ```
 adaptive_rag/
-├── app.py                      # Streamlit frontend (single file)
-├── main.py                     # FastAPI + Uvicorn entry point
-├── Dockerfile                  # Backend container
-├── requirements-backend.txt    # Backend-only deps (no torch / streamlit)
-├── requirements.txt            # Full deps for local development
+├── app.py                      # Streamlit frontend shell
+├── main.py                     # FastAPI backend entry point
+├── Dockerfile                  # Container definition
+├── requirements.txt            # Python dependencies
 │
 ├── src/
 │   ├── api/
-│   │   ├── main.py             # FastAPI app, CORS, lifespan, error handlers
+│   │   ├── main.py             # API config, CORS headers, and error hooks
 │   │   ├── routers/
-│   │   │   ├── chat.py         # SSE streaming chat endpoint
-│   │   │   ├── upload.py       # Document ingestion endpoint
-│   │   │   └── suggestions.py  # Topic + question generation
-│   │   └── schemas.py          # Pydantic request/response models
+│   │   │   ├── chat.py         # SSE stream endpoint with graph executor
+│   │   │   ├── upload.py       # Ingestion and vector indexing router
+│   │   │   ├── suggestions.py  # Topics generator endpoint
+│   │   │   └── system.py       # Cost, history, and status endpoints
+│   │   └── schemas.py          # Request validation models
 │   │
 │   ├── agents/
-│   │   ├── graph.py            # LangGraph StateGraph definition
-│   │   ├── nodes.py            # Node functions: route / retrieve / grade / generate
-│   │   └── state.py            # GraphState TypedDict
+│   │   ├── graph.py            # LangGraph configuration
+│   │   ├── nodes.py            # Node step implementations
+│   │   ├── edges.py            # Routing conditions
+│   │   └── state.py            # State dict model
 │   │
 │   ├── services/
-│   │   ├── embeddings.py       # Cohere embedding singleton
-│   │   ├── ingestion.py        # Document parsing + chunking + Qdrant upsert
-│   │   └── retrieval.py        # Semantic search over session Qdrant collection
+│   │   ├── ingestion.py        # File parsers, chunking, and indexer
+│   │   ├── retrieval.py        # Vector search resolver
+│   │   ├── embeddings.py       # Embedding API client
+│   │   ├── search.py           # Web search connector
+│   │   ├── grounding_checker.py # Parallel LLM grounding check
+│   │   ├── grounding_checker_embedding.py # Embedding similarity grounding check
+│   │   ├── knowledge_gap_analyzer.py # Missing info generator + Cache
+│   │   └── cost_tracker.py     # Token pricing calculator
 │   │
 │   └── core/
-│       ├── config.py           # Pydantic settings (env var loading)
-│       ├── database.py         # Qdrant + MongoDB client factories
-│       └── logging.py          # structlog configuration
+│       ├── config.py           # Settings config loader
+│       ├── database.py         # Qdrant + MongoDB connections
+│       └── logging.py          # Structured logs wrapper
+│
+├── frontend/
+│   ├── index.html              # Custom SPA UI layout
+│   └── app.js                  # SSE connection handler and DOM scripts
+│
+└── evaluate/
+    ├── naive_rag.py            # Naive baseline runner
+    ├── ragas_eval.py           # RAGAS metrics runner
+    ├── compare.py              # Report generation script
+    ├── test_routing.py         # Router accuracy tests
+    └── benchmark_latency.py    # Latency benchmarking script
 ```
+
+### File Map
+*   **App Shell**: [`app.py`](file:///d:/1%20placement/project/Adaptive%20RAG/app.py)
+*   **UI Components**: [`frontend/index.html`](file:///d:/1%20placement/project/Adaptive%20RAG/frontend/index.html) | [`frontend/app.js`](file:///d:/1%20placement/project/Adaptive%20RAG/frontend/app.js)
+*   **API Base**: [`main.py`](file:///d:/1%20placement/project/Adaptive%20RAG/main.py) | [`src/api/main.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/api/main.py)
+*   **Routing & SSE**: [`src/api/routers/chat.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/api/routers/chat.py)
+*   **Ingestion Endpoint**: [`src/api/routers/upload.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/api/routers/upload.py)
+*   **LangGraph Graph**: [`src/agents/graph.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/agents/graph.py)
+*   **LangGraph Nodes**: [`src/agents/nodes.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/agents/nodes.py)
+*   **Ingestion logic**: [`src/services/ingestion.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/services/ingestion.py)
+*   **Retrieval logic**: [`src/services/retrieval.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/services/retrieval.py)
+*   **Grounding logic**: [`src/services/grounding_checker.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/services/grounding_checker.py) | [`src/services/grounding_checker_embedding.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/services/grounding_checker_embedding.py)
+*   **Knowledge Gap Engine**: [`src/services/knowledge_gap_analyzer.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/services/knowledge_gap_analyzer.py)
+*   **Cost Analyzer**: [`src/services/cost_tracker.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/services/cost_tracker.py)
+*   **DB Clients**: [`src/core/database.py`](file:///d:/1%20placement/project/Adaptive%20RAG/src/core/database.py)
 
 ---
 
-## Local Development
+## Setup & Local Run
 
 ### Prerequisites
-- Python 3.12+
-- API keys (see environment variables below)
+*   Python 3.12+
+*   API keys for Groq, Cohere, Tavily, and a Qdrant Cloud cluster (all have free tiers).
 
-### Setup
+### Installation
 
-```bash
-git clone https://github.com/Aditya0105singh/Adaptive-RAG---knowledge-retrieval.git
-cd Adaptive-RAG---knowledge-retrieval/adaptive_rag
-pip install -r requirements.txt
-```
+1.  **Clone the Repo**:
+    ```bash
+    git clone https://github.com/Aditya0105singh/Adaptive-RAG---knowledge-retrieval.git
+    cd Adaptive-RAG---knowledge-retrieval
+    ```
 
-Create `.env`:
+2.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-```env
-# LLM
-GROQ_API_KEY=gsk_...
-GROQ_MODEL=llama-3.3-70b-versatile
+3.  **Setup Environment Variables** (Create a `.env` file at the root):
+    ```env
+    GROQ_API_KEY=gsk_...
+    GROQ_MODEL=llama-3.3-70b-versatile
+    COHERE_API_KEY=...
+    QDRANT_URL=https://your-qdrant-cluster.io
+    QDRANT_API_KEY=...
+    QDRANT_COLLECTION=documents
+    TAVILY_API_KEY=tvly-...
+    API_PORT=8080
+    PARENT_CHUNK_SIZE=1500
+    CHILD_CHUNK_SIZE=400
+    RELEVANCE_THRESHOLD=0.6
+    LOG_LEVEL=INFO
+    # Optional MongoDB Atlas URI for persistent chat history
+    MONGO_URI=mongodb+srv://...
+    ```
 
-# Embeddings (free at dashboard.cohere.com)
-COHERE_API_KEY=...
+4.  **Run Applications**:
+    ```bash
+    # Terminal 1: Start FastAPI backend
+    python main.py
 
-# Vector DB (free at cloud.qdrant.io)
-QDRANT_URL=https://your-cluster.qdrant.io
-QDRANT_API_KEY=...
-QDRANT_COLLECTION=documents
+    # Terminal 2: Start Streamlit interface
+    streamlit run app.py
+    ```
 
-# Web Search (free at app.tavily.com)
-TAVILY_API_KEY=tvly-...
+5.  **Run Evaluation Suite**:
+    ```bash
+    # Test intent router accuracy
+    python evaluate/test_routing.py
 
-# Chat history (optional)
-MONGO_URI=mongodb+srv://...
+    # Run RAGAS metrics on the adaptive system
+    python evaluate/ragas_eval.py
 
-# Chunking config
-EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
-EMBED_DIM=384
-PARENT_CHUNK_SIZE=1500
-CHILD_CHUNK_SIZE=400
-RELEVANCE_THRESHOLD=0.6
-LOG_LEVEL=INFO
-```
+    # Run RAGAS metrics on the naive baseline
+    python evaluate/naive_rag.py
 
-### Run
-
-```bash
-# Terminal 1 — Backend API
-python main.py
-# Runs on http://localhost:8080
-
-# Terminal 2 — Frontend
-streamlit run app.py
-# Opens http://localhost:8501
-```
+    # Compile the final comparison markdown report
+    python evaluate/compare.py
+    ```
 
 ---
 
-## API Reference
-
-Full interactive docs: **https://adaptive-rag-knowledge-retrieval.onrender.com/docs**
+## API Spec & SSE Protocol
 
 ### Endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness probe — returns `{"status":"ok"}` |
-| `POST` | `/api/upload` | Upload and index a document |
-| `POST` | `/api/chat/stream` | SSE streaming chat response |
-| `GET` | `/api/sessions/{session_id}` | Fetch session chat history |
-| `GET` | `/api/suggestions/{session_id}` | Get AI-generated topic chips |
-| `GET` | `/api/insight/{session_id}` | Get document summary + key topics |
+| `GET` | `/health` | API liveness status checks |
+| `POST` | `/api/upload` | Parses multi-format documents, embeds text chunks, and upserts to Qdrant |
+| `POST` | `/api/chat/stream` | Starts the SSE pipeline, executes LangGraph nodes, and streams tokens |
+| `GET` | `/api/sessions/{session_id}` | Retrieves persistent chat logs from MongoDB |
+| `GET` | `/api/suggestions/{session_id}` | Generates topic recommendation chips based on upload context |
+| `GET` | `/api/insight/{session_id}` | Generates a structural summary card for the sidebar |
 
-### Chat Stream Request
-
-```json
-POST /api/chat/stream
-Content-Type: application/json
-
-{
-  "question": "What is PM4Py integration?",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "history": [
-    {"role": "user", "content": "Tell me about the document"},
-    {"role": "assistant", "content": "This document covers..."}
-  ]
-}
+### SSE Event Stream Example
+The backend streams updates dynamically via `text/event-stream` format:
 ```
-
-### SSE Event Stream
-
-```
-data: {"type": "stage",  "stage": "routing"}
-data: {"type": "stage",  "stage": "retrieving"}
-data: {"type": "stage",  "stage": "grading"}
-data: {"type": "stage",  "stage": "generating"}
-data: {"type": "token",  "content": "PM4Py"}
-data: {"type": "token",  "content": " is a Python library..."}
-data: {"type": "done",   "route": "index", "sources": [...], "usage": {...}}
+data: {"type": "stage", "stage": "routing"}
+data: {"type": "stage", "stage": "retrieving"}
+data: {"type": "stage", "stage": "grading"}
+data: {"type": "stage", "stage": "generating"}
+data: {"type": "token", "content": "Adaptive"}
+data: {"type": "token", "content": " RAG"}
+data: {"type": "token", "content": " system..."}
+data: {"type": "done", "route": "index", "sources": [{"filename": "doc.pdf", "content": "..."}], "usage": {"prompt_tokens": 800, "completion_tokens": 120}, "cost_usd": 0.00054}
 ```
 
 ---
 
-## Deployment Guide
+## Deployment
 
-### Backend → Render
+### Backend on Render
+1.  Connected the repository to the Render dashboard.
+2.  Selected the **Docker** runtime environment.
+3.  Set the base directory path to `adaptive_rag`.
+4.  Configured the required `.env` keys in the Render Environment Variables tab. The service redeploys automatically on git push events.
 
-1. Push repo to GitHub
-2. Render dashboard → **New Web Service** → connect repo
-3. Runtime: **Docker** | Branch: `main` | Root: `adaptive_rag`
-4. Add environment variables (Render → Environment tab)
-5. Deploy — auto-redeploys on every push to `main`
-
-### Frontend → Streamlit Cloud
-
-1. Go to [share.streamlit.io](https://share.streamlit.io)
-2. Connect GitHub → select repo → main file: `adaptive_rag/app.py`
-3. Add secrets (Streamlit Cloud → Settings → Secrets):
-
-```toml
-GROQ_API_KEY = "gsk_..."
-QDRANT_URL = "https://..."
-QDRANT_API_KEY = "..."
-TAVILY_API_KEY = "tvly-..."
-API_URL = "https://adaptive-rag-knowledge-retrieval.onrender.com"
-```
-
-### Environment Variables Reference
-
-| Variable | Required | Service | Description |
-|---|---|---|---|
-| `GROQ_API_KEY` | ✅ | Both | Groq LLM key — [console.groq.com](https://console.groq.com) |
-| `COHERE_API_KEY` | ✅ | Backend | Cohere embed key — [dashboard.cohere.com](https://dashboard.cohere.com) |
-| `QDRANT_URL` | ✅ | Both | Qdrant cluster URL — [cloud.qdrant.io](https://cloud.qdrant.io) |
-| `QDRANT_API_KEY` | ✅ | Both | Qdrant API key |
-| `TAVILY_API_KEY` | ✅ | Backend | Tavily search key — [app.tavily.com](https://app.tavily.com) |
-| `API_URL` | ✅ | Frontend | Full Render backend URL |
-| `MONGO_URI` | ⬜ | Backend | MongoDB for chat history (optional) |
-| `GROQ_MODEL` | ⬜ | Backend | Default: `llama-3.3-70b-versatile` |
+### Frontend on Streamlit Cloud
+1.  Logged into [share.streamlit.io](https://share.streamlit.io).
+2.  Selected the repository, set the deployment branch to `main`, and pointed the entry file to `adaptive_rag/app.py`.
+3.  Added environment secrets (including the Render backend URL mapped to `API_URL`).
 
 ---
 
-## Design Decisions
+## Future Work (Deferred Tasks)
 
-**Why parent-child chunking?**
-Small child chunks (400 chars) give precise cosine-similarity matches; returning the full parent chunk (1500 chars) gives the LLM sufficient context to form a complete answer. Standard single-chunk RAG loses one or the other.
-
-**Why adaptive routing instead of always retrieving?**
-For general questions ("What is machine learning?") retrieval adds latency with no benefit. The routing node classifies intent first so each query takes the optimal path: document, web, or direct LLM.
-
-**Why SSE instead of WebSockets?**
-SSE is unidirectional (server → client), works natively with FastAPI `StreamingResponse`, and is simpler to implement for LLM token streaming. WebSockets add bidirectional complexity with no benefit for this use case.
-
-**Why Cohere for embeddings instead of a local model?**
-Local sentence-transformers (PyTorch) consumes ~300 MB RAM. Cohere's API-based embeddings use ~0 MB RAM — critical for fitting within Render's 512 MB free tier limit. Same 384-dim output, no retrieval quality loss.
-
-**Why LangGraph over a plain LangChain chain?**
-LangGraph's StateGraph exposes every routing decision as a node transition, making it trivial to add conditional edges (grade → transform → retry) without tangled chain callbacks. The graph is also checkpointed per-thread for future multi-turn memory.
-
----
-
-## Known Limitations (Free Tier)
-
-| Constraint | Limit | Notes |
-|---|---|---|
-| Groq rate limit | 6,000 tokens / min | Wait 60 s between heavy queries |
-| Render RAM | 512 MB | Solved via API-based embeddings |
-| Render spin-down | ~50 s cold start | First request after idle period |
-| Cohere free tier | 1,000 embed calls / month | Sufficient for demos |
-| Qdrant free tier | 1 GB vector storage | Sufficient for document demos |
+*   **Render Cold-Start Ping**: Render free tier instances sleep after 15 minutes of inactivity. I plan to set up a free UptimeRobot monitor checking `/health` every 14 minutes to keep the container awake.
+*   **Qdrant Free-Tier Activity**: Qdrant shuts down free clusters after 30 days without API activity. If needed, I can refactor the vector factory in `database.py` to run fully in-memory locally.
+*   **Session History Caching**: Currently, refreshing the browser page wipes all session history inside the frontend iframe. Moving chat logs to `sessionStorage` would fix this issue.
 
 ---
 
 ## Author
 
 **Aditya Singh**
-- GitHub: [@Aditya0105singh](https://github.com/Aditya0105singh)
-- Email: adityasingh01517@gmail.com
-
----
-
-*Built as a placement project demonstrating production RAG architecture with adaptive retrieval, streaming responses, and full-stack cloud deployment.*
+*   **Email**: adityasingh01052003@gmail.com / adityasingh01517@gmail.com
+*   **GitHub**: [@Aditya0105singh](https://github.com/Aditya0105singh)
