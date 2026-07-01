@@ -1,54 +1,122 @@
-// --- Sample document for demo (rich enough to trigger INDEX route with real chunks) ---
-const DEMO_DOC_TEXT = `Adaptive RAG System — Research Overview
-=====================================
+// --- Sample document for demo ---
+const DEMO_DOC_TEXT = `Adaptive RAG System — Complete Technical Research Report
+=========================================================
 
-PROJECT SUMMARY
-Adaptive RAG is a tri-route intelligent document retrieval system built using LangGraph,
-Qdrant vector database, Cohere embeddings, and Groq LLaMA 3.3 70B. The system adaptively
-routes each query to one of three paths: INDEX (document retrieval), SEARCH (web search
-via Tavily), or GENERAL (LLM knowledge). Routing accuracy achieved: 100% on 25 test cases.
+ABSTRACT
+This report presents Adaptive RAG, a production-grade tri-route Retrieval-Augmented Generation
+system that intelligently routes queries across three specialized pipelines: document index
+retrieval (INDEX), real-time web search (SEARCH), and parametric LLM knowledge (GENERAL).
+The system achieves 100% routing accuracy on 25 test cases and outperforms naive RAG baselines
+across all RAGAS evaluation dimensions. The core innovation is a self-correcting query rewrite
+loop that automatically improves retrieval quality when initial chunk scores fall below threshold.
 
-KEY FINDINGS & RESULTS
-- Faithfulness Score: 0.816 (RAGAS evaluation, +7.5% vs naive RAG baseline)
-- Context Precision: 1.000 (perfect score — no irrelevant chunks retrieved)
-- Routing Accuracy: 100% — 25/25 test cases correctly classified
-- Answer Relevancy: 0.923 across 8 benchmark questions
-- Average End-to-End Latency: 6,276ms (P50: 5,513ms, P95: 9,052ms)
+PROJECT OVERVIEW & MOTIVATION
+Traditional RAG systems apply a single retrieval strategy to every query, regardless of whether
+the question needs document context, live web data, or general knowledge. This one-size-fits-all
+approach wastes tokens on irrelevant retrieval and reduces answer quality. Adaptive RAG solves
+this by classifying each query before retrieval and routing it to the most appropriate pipeline.
+The system was built as a research project demonstrating that adaptive routing significantly
+improves faithfulness, context precision, and answer relevancy over naive RAG approaches.
 
-TECHNICAL METHODOLOGY
-The system uses a parent-child chunking strategy: parent chunks of 1,500 characters for
-context, child chunks of 400 characters for precise retrieval. Each retrieved chunk is
-graded by the LLM for relevance. Chunks scoring below the 0.6 threshold trigger a query
-rewrite loop (max 2 iterations) before falling back to web search. This self-correcting
-loop is the core innovation of the Adaptive RAG approach.
+KEY FINDINGS & PERFORMANCE METRICS
+Faithfulness Score: 0.816 — evaluated using the RAGAS framework, representing a 7.5% improvement
+over the naive RAG baseline score of 0.759. Faithfulness measures how well the generated answer
+is supported by the retrieved context, with higher scores indicating fewer hallucinations.
 
-ARCHITECTURE COMPONENTS
-1. LangGraph: Orchestrates the agentic workflow with nodes for routing, retrieval, grading, generation
-2. Qdrant Cloud: Vector database storing parent-child chunk pairs with cosine similarity search
-3. Cohere Embeddings: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions)
-4. Groq LLaMA 3.3 70B: Primary LLM for routing, generation, and grounding verification
-5. Tavily Search API: Real-time web search for queries needing current information
-6. FastAPI + SSE: Backend API with Server-Sent Events for token-by-token streaming
-7. Multi-provider Fallback: Groq → Gemini → Cerebras to ensure zero downtime
+Context Precision: 1.000 — a perfect score indicating that every retrieved chunk was relevant
+to the query. This improved from the naive baseline of 0.834, a gain of 19.9%. Perfect context
+precision means the system never wastes tokens on irrelevant retrieved content.
 
-EVALUATION METHODOLOGY
-The system was evaluated using the RAGAS framework on 8 questions spanning all three routes.
-Comparison against a naive RAG baseline (single retrieval, no routing, no grading) showed:
-- Faithfulness improved from 0.759 to 0.816 (+7.5%)
-- Context Precision improved from 0.834 to 1.000 (+19.9%)
-- Answer Relevancy improved from 0.891 to 0.923 (+3.6%)
+Routing Accuracy: 100% — all 25 hand-labeled test cases were correctly classified into the
+appropriate route (INDEX, SEARCH, or GENERAL). The router uses LLaMA 3.1 8B Instant with a
+structured prompt that considers document availability, query intent, and temporal requirements.
 
-GROUNDING VERIFICATION
-Every generated answer is verified sentence-by-sentence against retrieved source chunks.
-Each sentence is classified as GROUNDED (directly supported), INFERRED (reasonably implied),
-or UNGROUNDED (not supported by sources). A Trust Score (0-100%) is computed and displayed
-to the user alongside the answer. This transparency feature is a key differentiator.
+Answer Relevancy: 0.923 — measures how directly the generated answer addresses the question.
+Improved from the naive baseline of 0.891, a gain of 3.6%.
 
-DEPLOYMENT
-- Backend: Render.com (Docker, FastAPI, auto-deploy from GitHub)
-- Frontend: Vercel + Streamlit Cloud (HTML/JS dashboard)
-- Vector DB: Qdrant Cloud (EU-Central cluster)
+Latency Benchmarks (9 queries, 3 per route):
+- INDEX route: P50=4,910ms, P95=7,782ms, avg=5,813ms
+- SEARCH route: P50=5,493ms, P95=5,513ms, avg=5,278ms
+- GENERAL route: P50=8,376ms, P95=9,052ms, avg=7,737ms
+- Overall: P50=5,513ms, P95=9,052ms, avg=6,276ms
+
+TECHNICAL ARCHITECTURE
+
+Routing Layer:
+The router is a separate LLM call using LLaMA 3.1 8B Instant (faster and cheaper than the
+answer model). It receives the user question, a flag indicating whether a document is uploaded,
+and the conversation history. It outputs exactly one of: "index", "search", or "general".
+The routing prompt includes few-shot examples for each route to improve consistency.
+
+Parent-Child Chunking Strategy:
+Documents are chunked at two levels: parent chunks of 1,500 characters provide broad context,
+while child chunks of 400 characters enable precise semantic search. Retrieval is performed
+on child chunks (finding the most semantically similar small piece), but the full parent chunk
+is returned to the LLM for generation. This gives precise retrieval with rich context.
+
+Chunk Grading and Self-Correcting Rewrite Loop:
+After retrieval, each chunk is scored by the LLM for relevance to the query on a binary
+pass/fail basis. If fewer than the required number of chunks pass, or if the best cosine
+similarity score is below the 0.6 threshold, the system triggers a query rewrite. The rewriter
+(LLaMA 3.3 70B) generates a more specific, keyword-rich version of the original query. The
+improved query is then used for a second retrieval attempt. A maximum of 2 rewrite iterations
+are allowed before the system falls back to web search. This loop is the core algorithmic
+innovation that separates Adaptive RAG from standard RAG implementations.
+
+Grounding Verification:
+Every generated answer undergoes sentence-level grounding verification. Each sentence in the
+response is classified as GROUNDED (directly supported by retrieved chunks), INFERRED
+(reasonably implied but not explicitly stated), or UNGROUNDED (not supported by any source).
+The verification uses embedding cosine similarity and LLM judgment in parallel. A Trust Score
+(0-100%) is computed as: (grounded * 1.0 + inferred * 0.5) / total_sentences * 100. Answers
+with trust scores below 60% display a warning to the user.
+
+TECHNOLOGY STACK
+
+LLM Infrastructure:
+- Primary: Groq Cloud API with LLaMA 3.3 70B Versatile for answer generation
+- Router: Groq with LLaMA 3.1 8B Instant (separate quota bucket, faster)
+- Fallback chain: Groq → Gemini 2.0 Flash → Cerebras (gemma-4-31b)
+- Multi-key rotation: 3 Groq API keys with automatic failover on rate limits
+
+Vector Database:
+- Qdrant Cloud (EU-Central-1 cluster) with cosine similarity search
+- Per-session collections: each user session gets an isolated Qdrant collection
+- Embedding model: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions)
+- Cohere Reranker used for final chunk ordering before generation
+
+Agentic Workflow:
+- LangGraph StateGraph with nodes: route_question, retrieve, grade_documents,
+  transform_query, web_search_node, generate_answer
+- Conditional edges implement the rewrite loop and web search fallback
+- MemorySaver checkpointer enables multi-turn conversation with state persistence
+
+API & Streaming:
+- FastAPI backend with Server-Sent Events (SSE) for real-time token streaming
+- CORS configured for all origins to support multiple frontend deployments
+- Session-based cost tracking with per-query token usage and USD cost estimation
+
+DEPLOYMENT INFRASTRUCTURE
+- Backend: Render.com (Docker container, auto-deploy from GitHub main branch)
+- Frontend: Streamlit Cloud + Vercel (HTML/JS dashboard served as static files)
+- Vector DB: Qdrant Cloud (managed, serverless pricing, EU data residency)
 - Repository: github.com/Aditya0105singh/Adaptive-RAG---knowledge-retrieval
+
+COMPARISON: ADAPTIVE RAG vs NAIVE RAG
+Naive RAG always retrieves from the document index regardless of query type. For general
+knowledge questions (e.g., "What is machine learning?"), naive RAG retrieves irrelevant
+chunks and generates hallucinated answers citing those chunks. For current events questions
+(e.g., "Who is the current OpenAI CEO?"), naive RAG either retrieves stale document content
+or produces outdated answers. Adaptive RAG routes these queries correctly — to GENERAL
+(using LLM knowledge) and SEARCH (using Tavily web search) respectively — producing accurate,
+well-grounded answers without wasting document retrieval on inappropriate queries.
+
+FUTURE WORK
+Planned improvements include: multi-document cross-reference retrieval, GraphRAG integration
+for entity-relationship-aware retrieval, streaming grounding verification (show trust score
+as answer generates), and user feedback loop for routing accuracy improvement. The system
+architecture supports adding new routes (e.g., SQL database query, API call) without
+modifying the core graph structure.
 `;
 
 // --- API Base URL (auto-detects: localhost in dev, Render in production) ---
@@ -497,8 +565,42 @@ document.addEventListener('DOMContentLoaded', () => {
                           </div>
                         </div>
                         <div style="margin-top:7px; font-size:10px; color:#6B7280; text-align:center;">
-                          Ready — ask anything about this document
+                          Ready — try a suggested question below
                         </div>`;
+
+                    // Inject doc-specific question chips into the chat prompt row
+                    const promptsEl = document.getElementById('suggested-prompts');
+                    if (promptsEl) {
+                        promptsEl.innerHTML = `
+                          <div style="width:100%; font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; text-align:center;">Try these questions about the uploaded doc</div>
+                          <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?">
+                            <span style="background:#CCFBF1;color:#0F766E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">INDEX</span> Key findings & metrics
+                          </button>
+                          <button class="prompt-chip" data-prompt="Explain the parent-child chunking strategy and the self-correcting rewrite loop in detail.">
+                            <span style="background:#CCFBF1;color:#0F766E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">INDEX</span> Chunking & rewrite loop
+                          </button>
+                          <button class="prompt-chip" data-prompt="How does the grounding verification work and how is the Trust Score calculated?">
+                            <span style="background:#CCFBF1;color:#0F766E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">INDEX</span> Grounding & Trust Score
+                          </button>
+                          <button class="prompt-chip" data-prompt="Compare Adaptive RAG vs Naive RAG — what specific improvements were achieved?">
+                            <span style="background:#CCFBF1;color:#0F766E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">INDEX</span> Adaptive vs Naive RAG
+                          </button>
+                          <button class="prompt-chip" data-prompt="What is the complete technology stack and deployment infrastructure used?">
+                            <span style="background:#CCFBF1;color:#0F766E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">INDEX</span> Tech stack & deployment
+                          </button>
+                          <button class="prompt-chip" data-prompt="Who is the current CEO of OpenAI and what are their recent announcements?">
+                            <span style="background:#DBEAFE;color:#1D4ED8;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">SEARCH</span> Latest OpenAI news
+                          </button>
+                          <button class="prompt-chip" data-prompt="What is cosine similarity and why is it used in vector search?">
+                            <span style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:2px;">GENERAL</span> What is cosine similarity?
+                          </button>`;
+                        // Re-attach click handlers for new chips
+                        promptsEl.querySelectorAll('.prompt-chip[data-prompt]').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                if (chatInput) { chatInput.value = btn.dataset.prompt; chatInput.focus(); sendMessage(); }
+                            });
+                        });
+                    }
                     filesList.appendChild(card);
                 }
                 if (footerText) footerText.style.display = 'none';
@@ -582,9 +684,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = document.createElement('div');
         card.className = 'card response-card';
         card.innerHTML = `
-            <div class="query-bubble">
+            <div class="query-bubble" style="position:relative;">
                 <i class="ph ph-user-circle" style="font-size:16px; flex-shrink:0; margin-top:1px;"></i>
                 <span>${escHtml(query)}</span>
+                <span class="ai-new-dot" title="New AI response — click to dismiss" style="
+                  position:absolute; top:-6px; right:-6px;
+                  width:10px; height:10px; border-radius:50%;
+                  background:#10B981; box-shadow:0 0 0 0 rgba(16,185,129,0.6);
+                  animation:ai-dot-pulse 1.4s ease-in-out infinite;
+                  display:none;"></span>
             </div>
 
             <!-- Level 1: answer text -->
@@ -703,6 +811,12 @@ document.addEventListener('DOMContentLoaded', () => {
             metadataJson: card.querySelector('.metadata-json'),
             gapCard: gapCard,
         };
+
+        // Stop blinking dot when user clicks anywhere on the card (they've seen the answer)
+        card.addEventListener('click', () => {
+            const dot = card.querySelector('.ai-new-dot');
+            if (dot) dot.classList.add('ai-dot-read');
+        }, { once: false });
     }
 
     // Kept for Pipeline Inspector "How it works" static example
@@ -1150,6 +1264,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 updatePipelineInspector(lastMetadata);
                                 fetchGroundingComparison(ac, lastMetadata);
                                 _updateSessionStats(lastMetadata);
+                                // Show blinking green dot — answer is ready, draw attention
+                                const dot = ac.card && ac.card.querySelector('.ai-new-dot');
+                                if (dot) {
+                                    dot.style.display = 'inline-block';
+                                    // Auto-dismiss after 8s
+                                    setTimeout(() => dot.classList.add('ai-dot-read'), 8000);
+                                }
                             }
                             else if (evt.type === 'error') {
                                 const errDiv = document.createElement('div');
