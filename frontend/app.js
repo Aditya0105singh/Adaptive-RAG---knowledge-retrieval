@@ -672,25 +672,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3-level progressive disclosure answer card ---
     function createAnswerCard(query) {
         const wrapper = document.createElement('div');
-        wrapper.style.marginBottom = '24px';
+        wrapper.style.cssText = 'margin-bottom:24px; position:relative;';
+
+        // NEW badge on wrapper — no overflow:hidden here so it's never clipped
+        const newBadge = document.createElement('div');
+        newBadge.className = 'ai-new-dot';
+        newBadge.title = 'New AI response — click to dismiss';
+        newBadge.style.cssText = `
+            display:none; position:absolute; top:-10px; right:6px; z-index:100;
+            align-items:center; gap:5px; pointer-events:none;`;
+        newBadge.innerHTML = `
+            <span style="width:12px;height:12px;border-radius:50%;background:#10B981;
+              box-shadow:0 0 0 0 rgba(16,185,129,0.6);
+              animation:ai-dot-pulse 1.2s ease-in-out infinite;
+              display:inline-block;flex-shrink:0;"></span>
+            <span style="background:#10B981;color:white;font-size:10px;font-weight:800;
+              padding:2px 8px;border-radius:99px;letter-spacing:0.05em;
+              box-shadow:0 2px 8px rgba(16,185,129,0.4);">NEW</span>`;
+        wrapper.appendChild(newBadge);
 
         const card = document.createElement('div');
         card.className = 'card response-card';
-        card.style.position = 'relative';
         card.innerHTML = `
-            <!-- Blinking NEW dot — shown on done_all, hidden on click or after 8s -->
-            <div class="ai-new-dot" title="New AI response" style="
-              display:none; position:absolute; top:-8px; right:-8px; z-index:50;
-              align-items:center; gap:5px;">
-              <span style="
-                width:13px; height:13px; border-radius:50%; flex-shrink:0;
-                background:#10B981; box-shadow:0 0 0 0 rgba(16,185,129,0.6);
-                animation:ai-dot-pulse 1.2s ease-in-out infinite;
-                display:inline-block;"></span>
-              <span style="background:#10B981; color:white; font-size:10px; font-weight:800;
-                padding:2px 7px; border-radius:99px; letter-spacing:0.04em;">NEW</span>
-            </div>
-
             <div class="query-bubble">
                 <i class="ph ph-user-circle" style="font-size:16px; flex-shrink:0; margin-top:1px;"></i>
                 <span>${escHtml(query)}</span>
@@ -813,9 +816,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gapCard: gapCard,
         };
 
-        // Hide NEW badge when user clicks anywhere on the card
+        // Hide NEW badge when user clicks anywhere on the card or wrapper
         card.addEventListener('click', () => {
-            const dot = card.querySelector('.ai-new-dot');
+            const dot = wrapper.querySelector('.ai-new-dot');
             if (dot) dot.style.display = 'none';
         }, { once: false });
     }
@@ -1265,8 +1268,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 updatePipelineInspector(lastMetadata);
                                 fetchGroundingComparison(ac, lastMetadata);
                                 _updateSessionStats(lastMetadata);
-                                // Show blinking NEW badge — answer is ready, draw attention
-                                const dot = ac.card && ac.card.querySelector('.ai-new-dot');
+                                // Show blinking NEW badge on wrapper (not card — card has overflow:hidden)
+                                const dot = ac.element && ac.element.querySelector('.ai-new-dot');
                                 if (dot) {
                                     dot.style.display = 'flex';
                                     setTimeout(() => { dot.style.display = 'none'; }, 8000);
