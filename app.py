@@ -17,9 +17,16 @@ st.markdown("""
   [data-testid="stDecoration"], [data-testid="stStatusWidget"],
   [data-testid="collapsedControl"] { display: none !important; visibility: hidden !important; }
 
+  html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainContainer"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
   .stApp { background: transparent !important; overflow: hidden !important; height: 100vh !important; }
   .block-container { padding: 0 !important; max-width: 100% !important; height: 100vh !important; }
-  [data-testid="stAppViewContainer"] { padding: 0 !important; height: 100vh !important; overflow: hidden !important; }
   [data-testid="stVerticalBlock"] { gap: 0 !important; padding: 0 !important; height: 100vh !important; }
   section[data-testid="stSidebar"] { display: none !important; }
 
