@@ -467,17 +467,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     dropzoneTitle.innerText = "Drop another file or browse";
                     dropzoneTitle.style.color = "";
                 }
-                showToast(`${file.name} uploaded! (${data.parent_count} parent, ${data.child_count} child chunks)`, "success");
 
-                // Add file chip to sidebar list
+                // Permanent file card in sidebar (replaces flying toast)
                 const filesList = document.getElementById('uploaded-files-list');
                 const footerText = document.getElementById('dropzone-footer-text');
                 if (filesList) {
                     filesList.style.display = 'block';
-                    const chip = document.createElement('div');
-                    chip.className = 'file-chip';
-                    chip.innerHTML = `<i class="ph ph-file-text" style="font-size:14px; flex-shrink:0;"></i><span class="file-chip-name">${file.name}</span><span style="flex-shrink:0; color:var(--text-muted); font-size:10px;">${(file.size/1024).toFixed(0)}KB</span>`;
-                    filesList.appendChild(chip);
+                    const sizeKB = (file.size / 1024).toFixed(0);
+                    const parentCount = data.parent_count || 0;
+                    const childCount  = data.child_count  || 0;
+                    const card = document.createElement('div');
+                    card.style.cssText = `
+                        background:#F0FDF4; border:1px solid #6EE7B7; border-radius:10px;
+                        padding:10px 12px; margin-bottom:6px; font-size:12px;`;
+                    card.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:7px; margin-bottom:8px;">
+                          <i class="ph-fill ph-check-circle" style="color:#059669; font-size:16px; flex-shrink:0;"></i>
+                          <span style="font-weight:700; color:#065F46; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${escHtml(file.name)}</span>
+                          <span style="color:#6B7280; font-size:10px; flex-shrink:0;">${sizeKB} KB</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                          <div style="background:white; border-radius:6px; padding:6px 8px; text-align:center; border:1px solid #D1FAE5;">
+                            <div style="font-size:16px; font-weight:800; color:#059669; font-family:monospace;">${parentCount}</div>
+                            <div style="font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.04em;">Parent Chunks</div>
+                          </div>
+                          <div style="background:white; border-radius:6px; padding:6px 8px; text-align:center; border:1px solid #D1FAE5;">
+                            <div style="font-size:16px; font-weight:800; color:#059669; font-family:monospace;">${childCount}</div>
+                            <div style="font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.04em;">Child Chunks</div>
+                          </div>
+                        </div>
+                        <div style="margin-top:7px; font-size:10px; color:#6B7280; text-align:center;">
+                          Ready — ask anything about this document
+                        </div>`;
+                    filesList.appendChild(card);
                 }
                 if (footerText) footerText.style.display = 'none';
 
