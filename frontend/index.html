@@ -887,24 +887,31 @@
   /* Chat Input Area */
   .chat-area {
     flex-shrink: 0;
-    padding: 16px 32px 20px;
-    background: linear-gradient(to bottom, rgba(244,247,249,0) 0%, rgba(244,247,249,0.9) 20%, rgba(244,247,249,1) 100%);
+    padding: 12px 32px 16px;
+    background: rgba(244,247,249,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(0,0,0,0.06);
     display: flex;
-    flex-direction: column;
     align-items: center;
-    border-top: 1px solid var(--border);
+    justify-content: center;
   }
   
   .chat-input-wrapper {
     width: 100%;
-    max-width: 1000px;
+    max-width: 860px;
     background: white;
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 10px 16px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 12px 16px;
     display: flex;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .chat-input-wrapper:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.1), 0 2px 16px rgba(0,0,0,0.08);
   }
   
   .chat-input {
@@ -990,26 +997,39 @@
     animation: skeleton-pulse 1.5s ease-in-out infinite;
   }
 
+  /* Modern suggestion cards */
   .prompt-chip {
     background: white;
-    border: 1px solid var(--border);
-    border-radius: 99px;
-    padding: 7px 14px;
-    font-size: 12px;
+    border: 1px solid #E8EDF2;
+    border-radius: 14px;
+    padding: 13px 18px;
+    font-size: 13.5px;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--text-main);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
-    transition: all 0.15s;
+    gap: 12px;
+    transition: all 0.18s;
     font-family: inherit;
-    white-space: nowrap;
+    text-align: left;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    width: 100%;
   }
   .prompt-chip:hover {
     border-color: var(--primary);
-    color: var(--primary);
-    background: var(--primary-light);
+    background: #F0FDF9;
+    box-shadow: 0 3px 10px rgba(13,148,136,0.12);
+    transform: translateY(-1px);
+  }
+  .prompt-chip .chip-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .prompt-chip .chip-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 7px; border-radius: 5px; margin-left: auto; flex-shrink: 0;
   }
 
   .file-chip {
@@ -1261,6 +1281,33 @@
               <div style="font-size:11px; font-weight:700; color:#DDD6FE; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">Step 3 — Inspect Pipeline</div>
               <div style="font-size:13px; color:rgba(255,255,255,0.85); line-height:1.5;">Click the <strong style="color:#DDD6FE;">Pipeline Inspector</strong> tab to see route, latency, chunk scores, and Trust Score after any answer.</div>
             </div>
+          </div>
+        </div>
+
+        <!-- Suggestion Cards — shown on landing, hidden after first message -->
+        <div id="suggested-prompts" style="margin-bottom:24px;">
+          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px; text-align:center;">Try asking</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?">
+              <span class="chip-icon" style="background:#ECFDF5; color:#059669;"><i class="ph ph-atom"></i></span>
+              <span>What is Adaptive RAG?</span>
+              <span class="chip-label" style="background:#CCFBF1; color:#0F766E;">INDEX</span>
+            </button>
+            <button class="prompt-chip" data-prompt="Explain the tri-route routing system — how does the system decide between INDEX, SEARCH and GENERAL routes?">
+              <span class="chip-icon" style="background:#EFF6FF; color:#3B82F6;"><i class="ph ph-map-pin"></i></span>
+              <span>Explain the routing system</span>
+              <span class="chip-label" style="background:#CCFBF1; color:#0F766E;">INDEX</span>
+            </button>
+            <button class="prompt-chip" data-prompt="How does the grounding verification and Trust Score calculation work in this system?">
+              <span class="chip-icon" style="background:#FEF3C7; color:#D97706;"><i class="ph ph-shield-check"></i></span>
+              <span>How does grounding work?</span>
+              <span class="chip-label" style="background:#CCFBF1; color:#0F766E;">INDEX</span>
+            </button>
+            <button class="prompt-chip" data-tab="tab-benchmarks">
+              <span class="chip-icon" style="background:#F5F3FF; color:#7C3AED;"><i class="ph ph-chart-bar"></i></span>
+              <span>Show benchmark results</span>
+              <span class="chip-label" style="background:#F1F5F9; color:#475569;">TAB</span>
+            </button>
           </div>
         </div>
 
@@ -1570,18 +1617,6 @@
 
     <!-- Chat Input Area -->
     <div class="chat-area">
-      <div id="suggested-prompts" style="width:100%; max-width:1000px; margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-        <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?" title="Uses uploaded document → INDEX route">
-          <span style="background:#CCFBF1; color:#0F766E; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; margin-right:2px;">INDEX</span> Key findings in doc
-        </button>
-        <button class="prompt-chip" data-prompt="Who is the current CEO of OpenAI and what are their latest announcements?" title="Needs live web data → SEARCH route">
-          <span style="background:#DBEAFE; color:#1D4ED8; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; margin-right:2px;">SEARCH</span> Latest OpenAI news
-        </button>
-        <button class="prompt-chip" data-prompt="Explain what transformer neural networks are and how attention mechanisms work" title="General AI knowledge → GENERAL route">
-          <span style="background:#F1F5F9; color:#475569; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; margin-right:2px;">GENERAL</span> Explain transformers
-        </button>
-        <button class="prompt-chip" data-tab="tab-benchmarks"><i class="ph ph-chart-bar" style="font-size:13px;"></i> View benchmarks</button>
-      </div>
       <div class="chat-input-wrapper">
         <input type="text" class="chat-input" placeholder="Ask anything about your documents, or any general question...">
         <div class="chat-actions">
