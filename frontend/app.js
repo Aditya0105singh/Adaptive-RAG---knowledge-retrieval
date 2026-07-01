@@ -568,37 +568,28 @@ document.addEventListener('DOMContentLoaded', () => {
                           Ready — try a suggested question below
                         </div>`;
 
-                    // Inject doc-specific question pills into the suggestions list
+                    // Inject doc-specific suggestion pills above the input bar
                     const promptsEl = document.getElementById('suggested-prompts');
                     if (promptsEl) {
                         promptsEl.innerHTML = `
-                          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px; text-align:center;">Questions about your document</div>
-                          <div style="display:flex; flex-direction:column; gap:8px;">
                             <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this Adaptive RAG system?">
-                              <span class="chip-icon"><i class="ph ph-atom"></i></span>
-                              <span>What are the key findings & metrics?</span>
+                              <span class="chip-icon"><i class="ph ph-atom"></i></span>Key findings & metrics
                             </button>
                             <button class="prompt-chip" data-prompt="Explain the parent-child chunking strategy and the self-correcting rewrite loop in detail.">
-                              <span class="chip-icon"><i class="ph ph-files"></i></span>
-                              <span>Explain chunking & rewrite loop</span>
+                              <span class="chip-icon"><i class="ph ph-files"></i></span>Chunking & rewrite loop
                             </button>
                             <button class="prompt-chip" data-prompt="How does the grounding verification work and how is the Trust Score calculated?">
-                              <span class="chip-icon"><i class="ph ph-shield-check"></i></span>
-                              <span>How does grounding & Trust Score work?</span>
+                              <span class="chip-icon"><i class="ph ph-shield-check"></i></span>Grounding & Trust Score
                             </button>
-                            <button class="prompt-chip" data-prompt="Compare Adaptive RAG vs Naive RAG — what specific improvements were achieved in RAGAS scores?">
-                              <span class="chip-icon"><i class="ph ph-arrows-left-right"></i></span>
-                              <span>Adaptive RAG vs Naive RAG comparison</span>
+                            <button class="prompt-chip" data-prompt="Compare Adaptive RAG vs Naive RAG — what specific improvements were achieved?">
+                              <span class="chip-icon"><i class="ph ph-arrows-left-right"></i></span>Adaptive vs Naive RAG
                             </button>
                             <button class="prompt-chip" data-prompt="Who is the current CEO of OpenAI and what are their recent AI announcements?">
-                              <span class="chip-icon" style="color:#2563EB; background:#EFF6FF;"><i class="ph ph-globe"></i></span>
-                              <span>Latest OpenAI news <span style="font-size:11px;color:#94A3B8;">(web search)</span></span>
+                              <span class="chip-icon" style="color:#2563EB;background:#EFF6FF;"><i class="ph ph-globe"></i></span>Latest OpenAI news
                             </button>
-                            <button class="prompt-chip" data-prompt="What is cosine similarity and why is it used in vector search for RAG systems?">
-                              <span class="chip-icon" style="color:#7C3AED; background:#F5F3FF;"><i class="ph ph-brain"></i></span>
-                              <span>What is cosine similarity? <span style="font-size:11px;color:#94A3B8;">(general)</span></span>
-                            </button>
-                          </div>`;
+                            <button class="prompt-chip" data-prompt="What is cosine similarity and why is it used in vector search?">
+                              <span class="chip-icon" style="color:#7C3AED;background:#F5F3FF;"><i class="ph ph-brain"></i></span>Cosine similarity
+                            </button>`;
                         // Re-attach click handlers for new cards
                         promptsEl.querySelectorAll('.prompt-chip[data-prompt]').forEach(btn => {
                             btn.addEventListener('click', () => {

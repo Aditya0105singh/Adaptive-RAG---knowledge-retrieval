@@ -887,14 +887,14 @@
   /* Chat Input Area */
   .chat-area {
     flex-shrink: 0;
-    padding: 14px 40px 18px;
+    padding: 12px 32px 16px;
     background: rgba(244,247,249,0.95);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid rgba(0,0,0,0.06);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
   }
   
   .chat-input-wrapper {
@@ -1003,40 +1003,37 @@
     animation: skeleton-pulse 1.5s ease-in-out infinite;
   }
 
-  /* Modern suggestion pills — matches clean card style */
+  /* Floating suggestion pills — sit above the input bar */
   .prompt-chip {
     background: white;
     border: 1px solid #E8EDF2;
     border-radius: 99px;
-    padding: 11px 20px;
-    font-size: 14px;
+    padding: 8px 16px;
+    font-size: 13px;
     font-weight: 500;
     color: #1E293B;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     transition: all 0.18s;
     font-family: inherit;
-    text-align: left;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-    width: 100%;
+    white-space: nowrap;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
   }
   .prompt-chip:hover {
     border-color: #0D9488;
     background: #F0FDF9;
-    box-shadow: 0 4px 14px rgba(13,148,136,0.14);
+    box-shadow: 0 3px 12px rgba(13,148,136,0.15);
     transform: translateY(-1px);
   }
   .prompt-chip .chip-icon {
-    width: 28px; height: 28px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 15px; color: #0D9488;
+    flex-shrink: 0; font-size: 13px; color: #0D9488;
     background: #F0FDF9;
   }
-  .prompt-chip .chip-label {
-    display: none; /* hidden — keep route info in data attribute only */
-  }
+  .prompt-chip .chip-label { display: none; }
 
   .file-chip {
     display: flex;
@@ -1290,28 +1287,6 @@
           </div>
         </div>
 
-        <!-- Suggestion Pills — shown on landing, hidden after first message -->
-        <div id="suggested-prompts" style="margin-bottom:24px; max-width:520px; margin-left:auto; margin-right:auto;">
-          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px; text-align:center;">Try asking</div>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?">
-              <span class="chip-icon"><i class="ph ph-atom"></i></span>
-              <span>What is Adaptive RAG?</span>
-            </button>
-            <button class="prompt-chip" data-prompt="Explain the tri-route routing system — how does the system decide between INDEX, SEARCH and GENERAL routes?">
-              <span class="chip-icon"><i class="ph ph-map-pin"></i></span>
-              <span>Explain the routing system</span>
-            </button>
-            <button class="prompt-chip" data-prompt="How does the grounding verification and Trust Score calculation work in this system?">
-              <span class="chip-icon"><i class="ph ph-shield-check"></i></span>
-              <span>How does grounding work?</span>
-            </button>
-            <button class="prompt-chip" data-tab="tab-benchmarks">
-              <span class="chip-icon"><i class="ph ph-chart-bar"></i></span>
-              <span>Show benchmark results</span>
-            </button>
-          </div>
-        </div>
 
         <div class="grid-2">
           <!-- Left Column -->
@@ -1617,13 +1592,35 @@
       padding:6px 32px; background:white; border-top:1px solid var(--border);
       font-size:12px; color:var(--text-main);"></div>
 
-    <!-- Chat Input Area -->
+    <!-- Chat Input Area — frosted blur bar with suggestions floating above input -->
     <div class="chat-area">
-      <div class="chat-input-wrapper">
-        <input type="text" class="chat-input" placeholder="Ask anything about your documents, or any general question...">
-        <div class="chat-actions">
-          <button class="btn-icon"><i class="ph ph-plus"></i></button>
-          <button class="btn-send"><i class="ph-fill ph-paper-plane-right"></i></button>
+      <div style="width:100%; max-width:760px;">
+        <!-- Quick suggestion pills — hidden after first message -->
+        <div id="suggested-prompts" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; justify-content:center;">
+          <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?">
+            <span class="chip-icon"><i class="ph ph-atom"></i></span>
+            <span>What is Adaptive RAG?</span>
+          </button>
+          <button class="prompt-chip" data-prompt="Explain the tri-route routing system — how does the system decide between INDEX, SEARCH and GENERAL routes?">
+            <span class="chip-icon"><i class="ph ph-map-pin"></i></span>
+            <span>Explain the routing system</span>
+          </button>
+          <button class="prompt-chip" data-prompt="How does the grounding verification and Trust Score calculation work in this system?">
+            <span class="chip-icon"><i class="ph ph-shield-check"></i></span>
+            <span>How does grounding work?</span>
+          </button>
+          <button class="prompt-chip" data-tab="tab-benchmarks">
+            <span class="chip-icon"><i class="ph ph-chart-bar"></i></span>
+            <span>Show benchmark results</span>
+          </button>
+        </div>
+        <!-- Input bar -->
+        <div class="chat-input-wrapper">
+          <input type="text" class="chat-input" placeholder="Ask anything about your documents, or any general question...">
+          <div class="chat-actions">
+            <button class="btn-icon"><i class="ph ph-plus"></i></button>
+            <button class="btn-send"><i class="ph-fill ph-paper-plane-right"></i></button>
+          </div>
         </div>
       </div>
     </div>
