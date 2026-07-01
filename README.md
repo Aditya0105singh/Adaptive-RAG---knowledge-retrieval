@@ -369,10 +369,3 @@ data: {"type": "done", "route": "index", "sources": [{"filename": "doc.pdf", "co
 *   **Qdrant Free-Tier Activity**: Qdrant shuts down free clusters after 30 days without API activity. If needed, I can refactor the vector factory in `database.py` to run fully in-memory locally.
 *   **Session History Caching**: Currently, refreshing the browser page wipes all session history inside the frontend iframe. Moving chat logs to `sessionStorage` would fix this issue.
 
----
-
-## Author
-
-**Aditya Singh**
-*   **Email**: adityasingh01052003@gmail.com / adityasingh01517@gmail.com
-*   **GitHub**: [@Aditya0105singh](https://github.com/Aditya0105singh)
