@@ -44,10 +44,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Adaptive RAG API", version="1.0.0", lifespan=lifespan)
 
+_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()],
-    allow_credentials=True,
+    allow_origins=_origins,
+    allow_credentials=("*" not in _origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )

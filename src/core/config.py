@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     LOW_MATCH_THRESHOLD: float = 0.3
     LOG_LEVEL: str = "INFO"
     # Comma-separated list of allowed CORS origins (frontend URLs)
-    CORS_ORIGINS: str = "http://localhost:8501,http://localhost:8502"
+    CORS_ORIGINS: str = "*"
     # Port for the FastAPI backend (override when 8080 is taken by another app)
     API_PORT: int = 8080
 
