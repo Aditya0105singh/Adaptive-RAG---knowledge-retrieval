@@ -568,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           Ready — try a suggested question below
                         </div>`;
 
-                    // Inject doc-specific suggestion pills above the input bar
+                    // Inject doc-specific pills into the LEFT column
                     const promptsEl = document.getElementById('suggested-prompts');
                     if (promptsEl) {
                         promptsEl.innerHTML = `
@@ -586,9 +586,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             </button>
                             <button class="prompt-chip" data-prompt="Who is the current CEO of OpenAI and what are their recent AI announcements?">
                               <span class="chip-icon" style="color:#2563EB;background:#EFF6FF;"><i class="ph ph-globe"></i></span>Latest OpenAI news
-                            </button>
-                            <button class="prompt-chip" data-prompt="What is cosine similarity and why is it used in vector search?">
-                              <span class="chip-icon" style="color:#7C3AED;background:#F5F3FF;"><i class="ph ph-brain"></i></span>Cosine similarity
                             </button>`;
                         // Re-attach click handlers for new cards
                         promptsEl.querySelectorAll('.prompt-chip[data-prompt]').forEach(btn => {

@@ -886,20 +886,21 @@
   /* Chat Input Area */
   .chat-area {
     flex-shrink: 0;
-    padding: 0 32px 16px;
+    padding: 0 32px 20px;
     background: transparent;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 16px;
     position: relative;
   }
-  /* gradient fade behind the entire chat area */
+  /* gradient fade rising up behind the chat area */
   .chat-area::before {
     content: '';
     position: absolute;
     left: 0; right: 0; bottom: 0;
-    height: 120px;
-    background: linear-gradient(to bottom, rgba(244,247,249,0) 0%, rgba(244,247,249,0.97) 55%, rgba(244,247,249,1) 100%);
+    height: 160px;
+    background: linear-gradient(to bottom, rgba(244,247,249,0) 0%, rgba(244,247,249,0.85) 50%, rgba(244,247,249,0.98) 100%);
     pointer-events: none;
     z-index: 0;
   }
@@ -1010,12 +1011,12 @@
     animation: skeleton-pulse 1.5s ease-in-out infinite;
   }
 
-  /* Floating suggestion pills — sit above the input bar */
+  /* Floating suggestion pills */
   .prompt-chip {
     background: white;
     border: 1px solid #E8EDF2;
     border-radius: 99px;
-    padding: 8px 16px;
+    padding: 9px 16px 9px 10px;
     font-size: 13px;
     font-weight: 500;
     color: #1E293B;
@@ -1026,16 +1027,17 @@
     transition: all 0.18s;
     font-family: inherit;
     white-space: nowrap;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+    width: fit-content;
   }
   .prompt-chip:hover {
     border-color: #0D9488;
     background: #F0FDF9;
-    box-shadow: 0 3px 12px rgba(13,148,136,0.15);
+    box-shadow: 0 3px 14px rgba(13,148,136,0.18);
     transform: translateY(-1px);
   }
   .prompt-chip .chip-icon {
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 26px; height: 26px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; font-size: 13px; color: #0D9488;
     background: #F0FDF9;
@@ -1599,14 +1601,12 @@
       padding:6px 32px; background:white; border-top:1px solid var(--border);
       font-size:12px; color:var(--text-main);"></div>
 
-    <!-- Chat Input Area -->
+    <!-- Chat Input Area: LEFT = suggestion pills, RIGHT = input card -->
     <div class="chat-area">
-      <!-- Suggestion pills float freely above the input — z-index above gradient -->
+      <!-- LEFT: vertical suggestion pills -->
       <div id="suggested-prompts" style="
-        position:relative; z-index:1;
-        display:flex; flex-wrap:wrap; gap:8px;
-        justify-content:center; padding:8px 0 10px;
-        width:100%; max-width:760px;">
+          position:relative; z-index:1;
+          flex:1; display:flex; flex-direction:column; gap:8px; padding-bottom:4px;">
         <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this system?">
           <span class="chip-icon"><i class="ph ph-atom"></i></span>What is Adaptive RAG?
         </button>
@@ -1620,12 +1620,14 @@
           <span class="chip-icon"><i class="ph ph-chart-bar"></i></span>Show benchmark results
         </button>
       </div>
-      <!-- Input bar floats above gradient -->
-      <div class="chat-input-wrapper" style="position:relative; z-index:1;">
-        <input type="text" class="chat-input" placeholder="Ask anything about your documents, or any general question...">
-        <div class="chat-actions">
-          <button class="btn-icon"><i class="ph ph-plus"></i></button>
-          <button class="btn-send"><i class="ph-fill ph-paper-plane-right"></i></button>
+      <!-- RIGHT: floating chat input card -->
+      <div style="position:relative; z-index:1; flex:1;">
+        <div class="chat-input-wrapper">
+          <input type="text" class="chat-input" placeholder="Ask anything about your doc...">
+          <div class="chat-actions">
+            <button class="btn-icon"><i class="ph ph-plus"></i></button>
+            <button class="btn-send"><i class="ph-fill ph-paper-plane-right"></i></button>
+          </div>
         </div>
       </div>
     </div>
