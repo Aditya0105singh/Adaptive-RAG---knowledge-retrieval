@@ -10,21 +10,23 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Hide ALL Streamlit chrome — header, footer, sidebar, padding
+# Hide ALL Streamlit chrome and make iframe fill the full viewport
 st.markdown("""
 <style>
   #MainMenu, header, footer, [data-testid="stToolbar"],
   [data-testid="stDecoration"], [data-testid="stStatusWidget"],
   [data-testid="collapsedControl"] { display: none !important; visibility: hidden !important; }
 
-  .stApp { background: transparent !important; }
-  .block-container { padding: 0 !important; max-width: 100% !important; }
-  [data-testid="stAppViewContainer"] { padding: 0 !important; }
-  [data-testid="stVerticalBlock"] { gap: 0 !important; padding: 0 !important; }
+  .stApp { background: transparent !important; overflow: hidden !important; height: 100vh !important; }
+  .block-container { padding: 0 !important; max-width: 100% !important; height: 100vh !important; }
+  [data-testid="stAppViewContainer"] { padding: 0 !important; height: 100vh !important; overflow: hidden !important; }
+  [data-testid="stVerticalBlock"] { gap: 0 !important; padding: 0 !important; height: 100vh !important; }
   section[data-testid="stSidebar"] { display: none !important; }
 
-  /* Remove iframe border */
-  iframe { border: none !important; display: block !important; }
+  /* Stretch iframe to fill full viewport so inner 100vh = browser viewport */
+  iframe { border: none !important; display: block !important;
+           width: 100% !important; height: 100vh !important;
+           min-height: unset !important; }
 </style>
 """, unsafe_allow_html=True)
 
