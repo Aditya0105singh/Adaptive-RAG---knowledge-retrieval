@@ -1,3 +1,56 @@
+// --- Sample document for demo (rich enough to trigger INDEX route with real chunks) ---
+const DEMO_DOC_TEXT = `Adaptive RAG System — Research Overview
+=====================================
+
+PROJECT SUMMARY
+Adaptive RAG is a tri-route intelligent document retrieval system built using LangGraph,
+Qdrant vector database, Cohere embeddings, and Groq LLaMA 3.3 70B. The system adaptively
+routes each query to one of three paths: INDEX (document retrieval), SEARCH (web search
+via Tavily), or GENERAL (LLM knowledge). Routing accuracy achieved: 100% on 25 test cases.
+
+KEY FINDINGS & RESULTS
+- Faithfulness Score: 0.816 (RAGAS evaluation, +7.5% vs naive RAG baseline)
+- Context Precision: 1.000 (perfect score — no irrelevant chunks retrieved)
+- Routing Accuracy: 100% — 25/25 test cases correctly classified
+- Answer Relevancy: 0.923 across 8 benchmark questions
+- Average End-to-End Latency: 6,276ms (P50: 5,513ms, P95: 9,052ms)
+
+TECHNICAL METHODOLOGY
+The system uses a parent-child chunking strategy: parent chunks of 1,500 characters for
+context, child chunks of 400 characters for precise retrieval. Each retrieved chunk is
+graded by the LLM for relevance. Chunks scoring below the 0.6 threshold trigger a query
+rewrite loop (max 2 iterations) before falling back to web search. This self-correcting
+loop is the core innovation of the Adaptive RAG approach.
+
+ARCHITECTURE COMPONENTS
+1. LangGraph: Orchestrates the agentic workflow with nodes for routing, retrieval, grading, generation
+2. Qdrant Cloud: Vector database storing parent-child chunk pairs with cosine similarity search
+3. Cohere Embeddings: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions)
+4. Groq LLaMA 3.3 70B: Primary LLM for routing, generation, and grounding verification
+5. Tavily Search API: Real-time web search for queries needing current information
+6. FastAPI + SSE: Backend API with Server-Sent Events for token-by-token streaming
+7. Multi-provider Fallback: Groq → Gemini → Cerebras to ensure zero downtime
+
+EVALUATION METHODOLOGY
+The system was evaluated using the RAGAS framework on 8 questions spanning all three routes.
+Comparison against a naive RAG baseline (single retrieval, no routing, no grading) showed:
+- Faithfulness improved from 0.759 to 0.816 (+7.5%)
+- Context Precision improved from 0.834 to 1.000 (+19.9%)
+- Answer Relevancy improved from 0.891 to 0.923 (+3.6%)
+
+GROUNDING VERIFICATION
+Every generated answer is verified sentence-by-sentence against retrieved source chunks.
+Each sentence is classified as GROUNDED (directly supported), INFERRED (reasonably implied),
+or UNGROUNDED (not supported by sources). A Trust Score (0-100%) is computed and displayed
+to the user alongside the answer. This transparency feature is a key differentiator.
+
+DEPLOYMENT
+- Backend: Render.com (Docker, FastAPI, auto-deploy from GitHub)
+- Frontend: Vercel + Streamlit Cloud (HTML/JS dashboard)
+- Vector DB: Qdrant Cloud (EU-Central cluster)
+- Repository: github.com/Aditya0105singh/Adaptive-RAG---knowledge-retrieval
+`;
+
 // --- API Base URL (auto-detects: localhost in dev, Render in production) ---
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? ''
@@ -404,6 +457,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dropzoneTitle) dropzoneTitle.innerText = "Drag and drop files here";
             if (dropzoneDesc) dropzoneDesc.innerText = "Limit 50MB per file - PDF, TXT, DOCX, MD, CSV";
         }
+    }
+
+    // --- Try Sample Doc button ---
+    const sampleDocBtn = document.getElementById('sample-doc-btn');
+    if (sampleDocBtn) {
+        sampleDocBtn.addEventListener('click', async () => {
+            if (uploadCount >= 5) { showToast("Maximum 5 files reached.", "error"); return; }
+
+            const label = document.getElementById('sample-doc-btn-label');
+            sampleDocBtn.disabled = true;
+            if (label) label.textContent = 'Uploading…';
+
+            const blob = new Blob([DEMO_DOC_TEXT], { type: 'text/plain' });
+            const demoFile = new File([blob], 'adaptive_rag_research.txt', { type: 'text/plain' });
+            await handleFileUpload(demoFile);
+
+            sampleDocBtn.style.display = 'none'; // hide after upload — doc is now in sidebar
+        });
     }
 
     // --- New Chat button ---
@@ -826,59 +897,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Launch Demo Button ---
-    // Sample document that showcases all 3 routes when different questions are asked
-    const DEMO_DOC_TEXT = `Adaptive RAG System — Research Overview
-=====================================
-
-PROJECT SUMMARY
-Adaptive RAG is a tri-route intelligent document retrieval system built using LangGraph,
-Qdrant vector database, Cohere embeddings, and Groq LLaMA 3.3 70B. The system adaptively
-routes each query to one of three paths: INDEX (document retrieval), SEARCH (web search
-via Tavily), or GENERAL (LLM knowledge). Routing accuracy achieved: 100% on 25 test cases.
-
-KEY FINDINGS & RESULTS
-- Faithfulness Score: 0.816 (RAGAS evaluation, +7.5% vs naive RAG baseline)
-- Context Precision: 1.000 (perfect score — no irrelevant chunks retrieved)
-- Routing Accuracy: 100% — 25/25 test cases correctly classified
-- Answer Relevancy: 0.923 across 8 benchmark questions
-- Average End-to-End Latency: 6,276ms (P50: 5,513ms, P95: 9,052ms)
-
-TECHNICAL METHODOLOGY
-The system uses a parent-child chunking strategy: parent chunks of 1,500 characters for
-context, child chunks of 400 characters for precise retrieval. Each retrieved chunk is
-graded by the LLM for relevance. Chunks scoring below the 0.6 threshold trigger a query
-rewrite loop (max 2 iterations) before falling back to web search. This self-correcting
-loop is the core innovation of the Adaptive RAG approach.
-
-ARCHITECTURE COMPONENTS
-1. LangGraph: Orchestrates the agentic workflow with nodes for routing, retrieval, grading, generation
-2. Qdrant Cloud: Vector database storing parent-child chunk pairs with cosine similarity search
-3. Cohere Embeddings: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions)
-4. Groq LLaMA 3.3 70B: Primary LLM for routing, generation, and grounding verification
-5. Tavily Search API: Real-time web search for queries needing current information
-6. FastAPI + SSE: Backend API with Server-Sent Events for token-by-token streaming
-7. Multi-provider Fallback: Groq → Gemini → Cerebras to ensure zero downtime
-
-EVALUATION METHODOLOGY
-The system was evaluated using the RAGAS framework on 8 questions spanning all three routes.
-Comparison against a naive RAG baseline (single retrieval, no routing, no grading) showed:
-- Faithfulness improved from 0.759 to 0.816 (+7.5%)
-- Context Precision improved from 0.834 to 1.000 (+19.9%)
-- Answer Relevancy improved from 0.891 to 0.923 (+3.6%)
-
-GROUNDING VERIFICATION
-Every generated answer is verified sentence-by-sentence against retrieved source chunks.
-Each sentence is classified as GROUNDED (directly supported), INFERRED (reasonably implied),
-or UNGROUNDED (not supported by sources). A Trust Score (0-100%) is computed and displayed
-to the user alongside the answer. This transparency feature is a key differentiator.
-
-DEPLOYMENT
-- Backend: Render.com (Docker, FastAPI, auto-deploy from GitHub)
-- Frontend: Vercel + Streamlit Cloud (HTML/JS dashboard)
-- Vector DB: Qdrant Cloud (EU-Central cluster)
-- Repository: github.com/Aditya0105singh/Adaptive-RAG---knowledge-retrieval
-`;
-
     const DEMO_QUESTIONS = [
         "What are the key findings and performance metrics of this system?",
         "What is the technical methodology and chunking strategy used?",
@@ -889,34 +907,24 @@ DEPLOYMENT
     if (launchBtn && launchBtn.textContent.includes('Launch Demo')) {
         launchBtn.addEventListener('click', async () => {
             launchBtn.disabled = true;
-            launchBtn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite; font-size:14px;"></i> Uploading sample doc...';
+            launchBtn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite; font-size:14px;"></i> Loading…';
 
-            // Build a File from the embedded demo text
-            const blob = new Blob([DEMO_DOC_TEXT], { type: 'text/plain' });
-            const demoFile = new File([blob], 'adaptive_rag_research.txt', { type: 'text/plain' });
+            // Upload sample doc if not already done
+            if (uploadCount === 0) {
+                const blob = new Blob([DEMO_DOC_TEXT], { type: 'text/plain' });
+                await handleFileUpload(new File([blob], 'adaptive_rag_research.txt', { type: 'text/plain' }));
+                if (sampleDocBtn) sampleDocBtn.style.display = 'none';
+            }
 
-            // Upload it (reuse handleFileUpload)
-            await handleFileUpload(demoFile);
-
-            // Switch to chat tab
-            document.querySelectorAll('.nav-tab, .rail-item').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-            const chatTab = document.getElementById('tab-chat');
-            if (chatTab) chatTab.style.display = 'block';
-            document.querySelectorAll('[data-target="tab-chat"]').forEach(t => t.classList.add('active'));
-
-            // Ask the first demo question after a short pause
-            await new Promise(r => setTimeout(r, 800));
+            // Wait for upload to settle, then ask first question
+            await new Promise(r => setTimeout(r, 600));
             if (chatInput) {
                 chatInput.value = DEMO_QUESTIONS[0];
                 sendMessage();
             }
 
-            launchBtn.innerHTML = '<i class="ph-fill ph-lightning" style="color:#F59E0B"></i> Demo Running';
-            setTimeout(() => {
-                launchBtn.disabled = false;
-                launchBtn.innerHTML = '<i class="ph-fill ph-lightning" style="color:#F59E0B"></i> Launch Demo';
-            }, 15000);
+            launchBtn.disabled = false;
+            launchBtn.innerHTML = '<i class="ph-fill ph-lightning" style="color:#F59E0B"></i> Launch Demo';
         });
     }
 
