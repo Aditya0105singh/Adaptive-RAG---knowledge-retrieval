@@ -568,46 +568,35 @@ document.addEventListener('DOMContentLoaded', () => {
                           Ready — try a suggested question below
                         </div>`;
 
-                    // Inject doc-specific question cards into the suggestions grid
+                    // Inject doc-specific question pills into the suggestions list
                     const promptsEl = document.getElementById('suggested-prompts');
                     if (promptsEl) {
                         promptsEl.innerHTML = `
-                          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px; text-align:center;">Questions about your document</div>
-                          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px; text-align:center;">Questions about your document</div>
+                          <div style="display:flex; flex-direction:column; gap:8px;">
                             <button class="prompt-chip" data-prompt="What are the key findings and performance metrics of this Adaptive RAG system?">
-                              <span class="chip-icon" style="background:#ECFDF5;color:#059669;"><i class="ph ph-atom"></i></span>
-                              <span>Key findings & metrics</span>
-                              <span class="chip-label" style="background:#CCFBF1;color:#0F766E;">INDEX</span>
+                              <span class="chip-icon"><i class="ph ph-atom"></i></span>
+                              <span>What are the key findings & metrics?</span>
                             </button>
                             <button class="prompt-chip" data-prompt="Explain the parent-child chunking strategy and the self-correcting rewrite loop in detail.">
-                              <span class="chip-icon" style="background:#ECFDF5;color:#059669;"><i class="ph ph-files"></i></span>
-                              <span>Chunking & rewrite loop</span>
-                              <span class="chip-label" style="background:#CCFBF1;color:#0F766E;">INDEX</span>
+                              <span class="chip-icon"><i class="ph ph-files"></i></span>
+                              <span>Explain chunking & rewrite loop</span>
                             </button>
                             <button class="prompt-chip" data-prompt="How does the grounding verification work and how is the Trust Score calculated?">
-                              <span class="chip-icon" style="background:#FEF3C7;color:#D97706;"><i class="ph ph-shield-check"></i></span>
-                              <span>Grounding & Trust Score</span>
-                              <span class="chip-label" style="background:#CCFBF1;color:#0F766E;">INDEX</span>
+                              <span class="chip-icon"><i class="ph ph-shield-check"></i></span>
+                              <span>How does grounding & Trust Score work?</span>
                             </button>
                             <button class="prompt-chip" data-prompt="Compare Adaptive RAG vs Naive RAG — what specific improvements were achieved in RAGAS scores?">
-                              <span class="chip-icon" style="background:#EFF6FF;color:#3B82F6;"><i class="ph ph-arrows-left-right"></i></span>
-                              <span>Adaptive vs Naive RAG</span>
-                              <span class="chip-label" style="background:#CCFBF1;color:#0F766E;">INDEX</span>
-                            </button>
-                            <button class="prompt-chip" data-prompt="What is the complete technology stack and deployment infrastructure used in this project?">
-                              <span class="chip-icon" style="background:#F5F3FF;color:#7C3AED;"><i class="ph ph-stack"></i></span>
-                              <span>Tech stack & deployment</span>
-                              <span class="chip-label" style="background:#CCFBF1;color:#0F766E;">INDEX</span>
+                              <span class="chip-icon"><i class="ph ph-arrows-left-right"></i></span>
+                              <span>Adaptive RAG vs Naive RAG comparison</span>
                             </button>
                             <button class="prompt-chip" data-prompt="Who is the current CEO of OpenAI and what are their recent AI announcements?">
-                              <span class="chip-icon" style="background:#DBEAFE;color:#2563EB;"><i class="ph ph-globe"></i></span>
-                              <span>Latest OpenAI news</span>
-                              <span class="chip-label" style="background:#DBEAFE;color:#1D4ED8;">SEARCH</span>
+                              <span class="chip-icon" style="color:#2563EB; background:#EFF6FF;"><i class="ph ph-globe"></i></span>
+                              <span>Latest OpenAI news <span style="font-size:11px;color:#94A3B8;">(web search)</span></span>
                             </button>
                             <button class="prompt-chip" data-prompt="What is cosine similarity and why is it used in vector search for RAG systems?">
-                              <span class="chip-icon" style="background:#F1F5F9;color:#475569;"><i class="ph ph-brain"></i></span>
-                              <span>What is cosine similarity?</span>
-                              <span class="chip-label" style="background:#F1F5F9;color:#475569;">GENERAL</span>
+                              <span class="chip-icon" style="color:#7C3AED; background:#F5F3FF;"><i class="ph ph-brain"></i></span>
+                              <span>What is cosine similarity? <span style="font-size:11px;color:#94A3B8;">(general)</span></span>
                             </button>
                           </div>`;
                         // Re-attach click handlers for new cards
