@@ -1,8 +1,15 @@
 # Adaptive RAG AI: Dynamic Query Routing & Retrieval System
 
-A full-stack Retrieval-Augmented Generation (RAG) system that uses LangGraph and FastAPI to dynamically route user queries between local document index, live web search, and direct LLM reasoning. 
+### What We Made
+A full-stack Retrieval-Augmented Generation (RAG) system that uploads documents (PDF, DOCX, TXT, MD, CSV) and lets you ask questions in natural language. It is built with a **FastAPI** backend orchestrating a stateful **LangGraph** pipeline, and a custom **Streamlit + HTML/JS** frontend that supports real-time Server-Sent Events (SSE) token streaming.
 
-I built this project to demonstrate a production-ready RAG architecture that solves the rigidity and latency issues of naive RAG setups. Instead of blindly executing vector searches for every input, the system checks query intent first and adapts the retrieval path accordingly.
+### What Makes It Unique
+Unlike a naive RAG system that blindly runs vector database searches for every single question, this system evaluates query intent first to optimize speed and relevance:
+*   **Dynamic Tri-Routing**: An LLM intent classifier routes the query down the most optimal path: Document Retrieval (local Qdrant index), Live Web Search (Tavily fallback), or General Knowledge reasoning (direct LLM).
+*   **Self-Correcting Retrieval Loop**: If document search returns chunks below a relevance threshold (0.6), the system uses an LLM to rewrite the query and retries the search. If it still fails, it seamlessly falls back to a web search.
+*   **Single-Batch Relevance Grading & Fast Path**: Instead of calling the LLM sequentially for each chunk, it grades all chunks in one batch. If the first retrieve score is extremely low (< 0.3), it triggers a fast-path bypass straight to Web Search, saving seconds of latency.
+*   **Mid-Stream Provider Fallback**: If the primary LLM (Groq Llama 3.3) hits rate limits mid-generation, the SSE stream catches the error, sends backspace characters to clear the screen, switches to fallback models (Gemini/Cerebras/Cohere), and continues generation seamlessly.
+*   **Grounding Ablation**: Sentences in the final answer are checked for hallucinations. Users can inspect LLM-based sentence grading side-by-side with a fast, zero-cost, local vector embedding similarity calculator.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://adaptive-rag---knowledge-retrieval-3lzqznfonuduremjxvis7x.streamlit.app)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Swagger%20UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://adaptive-rag-knowledge-retrieval.onrender.com/docs)
